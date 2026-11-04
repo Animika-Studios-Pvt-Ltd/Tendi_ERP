@@ -13,8 +13,8 @@ import { PermissionGate, ProtectedRoute } from './ProtectedRoute';
 const ProfilePage = lazy(() => import('@/pages/ProfilePage'));
 
 function moduleRoutes(module) {
-  const gate = (element) => (
-    <PermissionGate module={module.permission} title={module.title}>
+  const gate = (element, action = 'read') => (
+    <PermissionGate module={module.permission} action={action} title={module.title}>
       {element}
     </PermissionGate>
   );
@@ -36,6 +36,9 @@ function moduleRoutes(module) {
             />
           );
         })}
+      {(module.routes ?? []).map(({ path, element: Page, action }) => (
+        <Route key={path} path={path} element={gate(<Page />, action)} />
+      ))}
     </Route>
   );
 }

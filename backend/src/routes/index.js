@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireDatabase } from '../middleware/common.js';
 import authRoutes from '../modules/auth/auth.routes.js';
 import healthRoutes, { readinessHandler } from '../modules/health/health.routes.js';
+import projectRoutes from '../modules/projects/projects.routes.js';
 
 const router = Router();
 
@@ -14,9 +15,8 @@ router.use('/auth', authRoutes);
 
 /*
  * Business modules are mounted here as they are built, each protected with
- * authenticate + authorize(<module>, <action>) inside its own router:
- *   router.use('/projects', projectRoutes);
- *   router.use('/procurement', procurementRoutes);
+ * authenticate + authorize(<module>, <action>) inside its own router.
  */
+router.use('/projects', projectRoutes);
 
 export default router;

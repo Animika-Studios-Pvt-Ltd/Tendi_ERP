@@ -1,5 +1,10 @@
 import { FolderKanban } from 'lucide-react';
-import { MODULES } from '@/constants/permissions';
+import { lazy } from 'react';
+import { ACTIONS, MODULES } from '@/constants/permissions';
+
+const ProjectsListPage = lazy(() => import('./pages/ProjectsListPage'));
+const ProjectFormPage = lazy(() => import('./pages/ProjectFormPage'));
+const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 
 export default {
   key: MODULES.PROJECTS,
@@ -10,10 +15,16 @@ export default {
   group: 'execution',
   phase: 2,
   description: 'Plan projects, break work into tasks and milestones, and track schedule and cost against baseline.',
+  element: ProjectsListPage,
   sections: [
     { path: '', title: 'All projects' },
     { path: 'tasks', title: 'Tasks' },
     { path: 'milestones', title: 'Milestones' },
+  ],
+  routes: [
+    { path: 'new', title: 'New project', element: ProjectFormPage, action: ACTIONS.CREATE },
+    { path: ':id', element: ProjectDetailPage },
+    { path: ':id/edit', element: ProjectFormPage, action: ACTIONS.UPDATE },
   ],
   capabilities: [
     'Project register with client, location, value and timeline',

@@ -37,7 +37,7 @@ export default function GlobalSearch() {
   const results = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) return [];
-    return ROUTE_INDEX.filter((route) => can(route.module.permission, 'read'))
+    return ROUTE_INDEX.filter((route) => !route.hidden && can(route.module.permission, 'read'))
       .filter((route) => `${route.title} ${route.module.title}`.toLowerCase().includes(term))
       .slice(0, 8);
   }, [query, can]);

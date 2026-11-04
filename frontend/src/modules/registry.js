@@ -17,7 +17,8 @@ import users from './users';
 /**
  * Single source of truth for navigation, routes, breadcrumbs and global search.
  * To ship a module screen, add `element` (lazy page) to its manifest, or
- * `element` on a section for nested pages.
+ * `element` on a section for nested pages. `routes` adds pages that are not in the
+ * navigation (create, detail, edit): [{ path, element, action?, title? }].
  */
 export const NAV_GROUPS = [
   { key: 'overview', label: null },
@@ -55,6 +56,10 @@ export const ROUTE_INDEX = MODULE_REGISTRY.flatMap((module) => [
   ...(module.sections ?? [])
     .filter((section) => section.path)
     .map((section) => ({ path: sectionPath(module, section), title: section.title, module, section })),
+  // Static extra pages (e.g. /projects/new) get breadcrumbs; dynamic ones set their own titles.
+  ...(module.routes ?? [])
+    .filter((route) => route.title && !route.path.includes(':'))
+    .map((route) => ({ path: `${module.path}/${route.path}`, title: route.title, module, hidden: true })),
 ]);
 
 export const STATIC_ROUTES = [{ path: '/profile', title: 'My profile' }];

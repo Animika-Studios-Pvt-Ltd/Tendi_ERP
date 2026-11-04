@@ -54,7 +54,7 @@ export default function ProjectSelector() {
             ))}
           </ul>
           {projects.length === 0 && (
-            <EmptyState compact title="No projects yet" description="Projects you are assigned to will appear here once Project Management is set up." />
+            <EmptyState compact title="No projects yet" description="Projects you create or are assigned to will appear here." />
           )}
         </div>
       )}
