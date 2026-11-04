@@ -1,0 +1,22 @@
+import { Router } from 'express';
+import { requireDatabase } from '../middleware/common.js';
+import authRoutes from '../modules/auth/auth.routes.js';
+import healthRoutes, { readinessHandler } from '../modules/health/health.routes.js';
+
+const router = Router();
+
+router.use('/health', healthRoutes);
+router.get('/ready', readinessHandler);
+
+// Everything below needs MongoDB.
+router.use(requireDatabase);
+router.use('/auth', authRoutes);
+
+/*
+ * Business modules are mounted here as they are built, each protected with
+ * authenticate + authorize(<module>, <action>) inside its own router:
+ *   router.use('/projects', projectRoutes);
+ *   router.use('/procurement', procurementRoutes);
+ */
+
+export default router;

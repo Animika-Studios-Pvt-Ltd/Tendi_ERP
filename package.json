@@ -1,0 +1,24 @@
+{
+  "name": "lumos-construction-erp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ten.Di ERP management system (MERN monorepo)",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,yellow --kill-others-on-fail \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev:backend": "npm run dev -w backend",
+    "dev:frontend": "npm run dev -w frontend",
+    "build": "npm run build -w frontend",
+    "start": "npm run start -w backend",
+    "seed": "npm run seed -w backend"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
+}

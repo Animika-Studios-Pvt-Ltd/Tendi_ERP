@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+
+# Environment (keep the .example files)
+.env
+.env.*
+!.env.example
+
+# Keys, certificates and credential files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+service-account*.json
+credentials*.json
+
+# Build output
+frontend/dist/
+dist/
+build/
+coverage/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Uploads written locally during development
+backend/uploads/
+
+# Editors and OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
