@@ -1,5 +1,13 @@
 import { HardHat } from 'lucide-react';
-import { MODULES } from '@/constants/permissions';
+import { lazy } from 'react';
+import { ACTIONS, MODULES } from '@/constants/permissions';
+
+const SitesListPage = lazy(() => import('./pages/SitesListPage'));
+const SiteFormPage = lazy(() => import('./pages/SiteFormPage'));
+const SiteDetailPage = lazy(() => import('./pages/SiteDetailPage'));
+const DprListPage = lazy(() => import('./pages/DprListPage'));
+const DprFormPage = lazy(() => import('./pages/DprFormPage'));
+const DprDetailPage = lazy(() => import('./pages/DprDetailPage'));
 
 export default {
   key: MODULES.SITES,
@@ -10,9 +18,18 @@ export default {
   group: 'execution',
   phase: 2,
   description: 'Manage sites and capture daily progress, labour, material use, photos and issues from the field.',
+  element: SitesListPage,
   sections: [
-    { path: '', title: 'Sites' },
-    { path: 'daily-progress', title: 'Daily progress reports' },
+    { path: '', title: 'Sites', element: SitesListPage },
+    { path: 'daily-progress', title: 'Daily progress reports', element: DprListPage },
+  ],
+  routes: [
+    { path: 'new', title: 'New site', element: SiteFormPage, action: ACTIONS.CREATE },
+    { path: ':id', element: SiteDetailPage },
+    { path: ':id/edit', title: 'Edit site', element: SiteFormPage, action: ACTIONS.UPDATE },
+    { path: 'daily-progress/new', title: 'Draft DPR', element: DprFormPage, action: ACTIONS.CREATE },
+    { path: 'daily-progress/:id', element: DprDetailPage },
+    { path: 'daily-progress/:id/edit', title: 'Edit DPR', element: DprFormPage, action: ACTIONS.UPDATE },
   ],
   capabilities: [
     'Site register linked to projects',

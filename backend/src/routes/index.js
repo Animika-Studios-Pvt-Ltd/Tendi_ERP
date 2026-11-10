@@ -4,6 +4,7 @@ import authRoutes from '../modules/auth/auth.routes.js';
 import healthRoutes, { readinessHandler } from '../modules/health/health.routes.js';
 import projectRoutes from '../modules/projects/projects.routes.js';
 import roleRoutes from '../modules/roles/roles.routes.js';
+import sitesRoutes from '../modules/sites/sites.routes.js';
 import userRoutes from '../modules/users/users.routes.js';
 
 const router = Router();
@@ -22,5 +23,6 @@ router.use('/roles', roleRoutes);
  * authenticate + authorize(<module>, <action>) inside its own router.
  */
 router.use('/projects', projectRoutes);
+router.use('/sites', sitesRoutes);
 
 export default router;
