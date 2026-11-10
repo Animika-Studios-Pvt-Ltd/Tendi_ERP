@@ -57,7 +57,7 @@ api.interceptors.response.use(
     const normalized = normalizeError(error);
     const isSessionCheck = error.config?.url?.includes('/auth/me') || error.config?.url?.includes('/auth/login');
     if (normalized.status === 401 && !isSessionCheck) {
-      window.dispatchEvent(new CustomEvent(AUTH_EVENTS.UNAUTHORIZED));
+      window.dispatchEvent(new CustomEvent(AUTH_EVENTS.UNAUTHORIZED, { detail: normalized }));
     }
     return Promise.reject(normalized);
   },

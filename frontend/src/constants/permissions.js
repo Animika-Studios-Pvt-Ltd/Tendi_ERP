@@ -31,8 +31,12 @@ export const ROLE_KEYS = Object.freeze({
   COMPANY_ADMIN: 'company_admin',
   PROJECT_MANAGER: 'project_manager',
   SITE_ENGINEER: 'site_engineer',
+  ACCOUNTANT: 'accountant',
+  HR_MANAGER: 'hr_manager',
+  PROCUREMENT_MANAGER: 'procurement_manager',
   STORE_MANAGER: 'store_manager',
-  ACCOUNTANT_HR: 'accountant_hr',
+  LEGAL_MANAGER: 'legal_manager',
   CONTRACTOR: 'contractor',
   CUSTOMER: 'customer',
+  ACCOUNTANT_HR: 'accountant_hr',
 });

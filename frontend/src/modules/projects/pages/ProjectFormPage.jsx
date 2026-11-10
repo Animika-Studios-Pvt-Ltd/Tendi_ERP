@@ -92,7 +92,7 @@ function toFormValues(project) {
 
 function ManagerField({ value, onChange, id, invalid, ...aria }) {
   if (!value) {
-    return <UserPicker id={id} invalid={invalid} onSelect={onChange} placeholder="Search for the project manager" {...aria} />;
+    return <UserPicker id={id} invalid={invalid} forProjectManager onSelect={onChange} placeholder="Search for the project manager" {...aria} />;
   }
   return (
     <div id={id} className="flex h-9 items-center gap-2 rounded-md border border-line-strong bg-surface pr-1 pl-2">

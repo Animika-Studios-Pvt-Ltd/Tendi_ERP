@@ -34,9 +34,14 @@ export async function authenticate(req, _res, next) {
 export function authorize(module, ...actions) {
   const required = actions.length ? actions : ['read'];
   return (req, _res, next) => {
-    const role = req.user?.role;
-    if (!role) throw ApiError.unauthorized();
-    if (!required.some((action) => role.can(module, action))) {
+    const user = req.user;
+    if (!user || !user.role) throw ApiError.unauthorized();
+    const hasPermission = typeof user.can === 'function'
+      ? required.some((action) => user.can(module, action))
+      : user.role && typeof user.role.can === 'function'
+        ? required.some((action) => user.role.can(module, action))
+        : false;
+    if (!hasPermission) {
       throw ApiError.forbidden(`Your role cannot ${required.join(' or ')} in ${module}`);
     }
     next();

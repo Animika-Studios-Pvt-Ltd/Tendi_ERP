@@ -1,4 +1,4 @@
-import { DATA_SCOPES } from '../config/rbac.js';
+import { DATA_SCOPES, ROLES } from '../config/rbac.js';
 
 /**
  * Restricts a query to the projects a user may see. Every project-bound list/read
@@ -9,9 +9,11 @@ import { DATA_SCOPES } from '../config/rbac.js';
  * Use projectField "_id" when querying the Project model itself.
  */
 export function buildProjectScope(user, { projectField = 'project' } = {}) {
-  const scope = user?.role?.dataScope;
-  if (scope === DATA_SCOPES.ALL) return {};
-  if (scope === DATA_SCOPES.ASSIGNED || scope === DATA_SCOPES.OWN) {
+  const roleKey = user?.role?.key;
+  if (roleKey === ROLES.SUPER_ADMIN || roleKey === ROLES.COMPANY_ADMIN || user?.role?.dataScope === DATA_SCOPES.ALL) {
+    return {};
+  }
+  if (user?.role?.dataScope === DATA_SCOPES.ASSIGNED || user?.role?.dataScope === DATA_SCOPES.OWN) {
     return { [projectField]: { $in: user.assignedProjects ?? [] } };
   }
   // Unknown scope: match nothing rather than leak data.
@@ -28,6 +30,9 @@ export function buildOwnershipScope(user, ownerFilter) {
 }
 
 export function canAccessProject(user, projectId) {
-  if (user?.role?.dataScope === DATA_SCOPES.ALL) return true;
+  const roleKey = user?.role?.key;
+  if (roleKey === ROLES.SUPER_ADMIN || roleKey === ROLES.COMPANY_ADMIN || user?.role?.dataScope === DATA_SCOPES.ALL) {
+    return true;
+  }
   return (user?.assignedProjects ?? []).some((id) => String(id) === String(projectId));
 }

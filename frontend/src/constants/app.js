@@ -27,6 +27,7 @@ export const STATUS_META = Object.freeze({
   on_hold: { label: 'On hold', tone: 'warning' },
   completed: { label: 'Completed', tone: 'neutral' },
   inactive: { label: 'Inactive', tone: 'neutral' },
+  suspended: { label: 'Suspended', tone: 'danger' },
   low_stock: { label: 'Low stock', tone: 'warning' },
   out_of_stock: { label: 'Out of stock', tone: 'danger' },
 });

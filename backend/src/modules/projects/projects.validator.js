@@ -83,5 +83,15 @@ export const listProjectsQuery = z.object({
 
 export const projectIdParams = z.object({ id: objectId });
 export const teamMemberParams = z.object({ id: objectId, userId: objectId });
-export const addTeamMemberSchema = z.object({ userId: objectId });
-export const userLookupQuery = z.object({ q: text(100).optional() });
+export const addTeamMemberSchema = z
+  .object({
+    userId: objectId.optional(),
+    userIds: z.array(objectId).min(1).optional(),
+  })
+  .refine((data) => Boolean(data.userId || (data.userIds && data.userIds.length > 0)), {
+    message: 'Provide userId or userIds',
+  });
+export const userLookupQuery = z.object({
+  q: text(100).optional(),
+  forProjectManager: z.union([z.boolean(), z.enum(['true', 'false'])]).optional(),
+});

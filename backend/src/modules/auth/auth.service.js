@@ -5,9 +5,15 @@ import { hashToken, User, USER_STATUS } from '../../models/User.js';
 import { ApiError } from '../../utils/ApiError.js';
 const INVALID_CREDENTIALS = 'Email or password is incorrect';
 
-/** Shape sent to the client: profile, role and a { module: actions[] } permission map. */
+/** Shape sent to the client: profile, role and a { module: actions[] } effective permission map. */
 export function toSessionUser(user) {
   const role = user.role;
+  const effectivePermissions = typeof user.toEffectivePermissionMap === 'function'
+    ? user.toEffectivePermissionMap()
+    : role?.toPermissionMap
+      ? role.toPermissionMap()
+      : {};
+
   return {
     id: String(user._id),
     firstName: user.firstName,
@@ -21,7 +27,12 @@ export function toSessionUser(user) {
     lastLoginAt: user.lastLoginAt,
     assignedProjects: (user.assignedProjects ?? []).map(String),
     role: { key: role.key, name: role.name, dataScope: role.dataScope },
-    permissions: role.toPermissionMap(),
+    permissions: effectivePermissions,
+    permissionOverrides: (user.permissionOverrides ?? []).map((o) => ({
+      module: o.module,
+      action: o.action,
+      granted: o.granted,
+    })),
   };
 }
 

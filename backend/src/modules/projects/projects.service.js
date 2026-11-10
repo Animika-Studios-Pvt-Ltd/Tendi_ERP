@@ -1,9 +1,11 @@
-import { DATA_SCOPES } from '../../config/rbac.js';
+import { DATA_SCOPES, ROLES } from '../../config/rbac.js';
 import { Project } from '../../models/Project.js';
 import { User, USER_STATUS } from '../../models/User.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { paginate, parsePagination } from '../../utils/pagination.js';
 import { buildProjectScope } from '../../utils/scope.js';
+
+export const ELIGIBLE_PM_ROLES = [ROLES.PROJECT_MANAGER, ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN];
 
 const SORT_FIELDS = ['createdAt', 'name', 'code', 'startDate', 'plannedEndDate', 'contractValue', 'status'];
 const PERSON_FIELDS = 'firstName lastName email designation';
@@ -70,10 +72,25 @@ async function findActiveUser(id, field) {
   return person;
 }
 
+async function findActiveProjectManager(id, field = 'projectManager') {
+  const person = await User.findOne({ _id: id, status: USER_STATUS.ACTIVE })
+    .select(`${PERSON_FIELDS} role`)
+    .populate('role');
+  if (!person) throw ApiError.validation([{ field, message: 'Choose an active user' }]);
+
+  const isEligible =
+    ELIGIBLE_PM_ROLES.includes(person.role?.key) ||
+    (person.role && typeof person.role.can === 'function' && person.role.can('projects', 'update'));
+  if (!isEligible) {
+    throw ApiError.validation([{ field, message: 'Designated project manager must have an authorized management role' }]);
+  }
+  return person;
+}
+
 const assignToProject = (userId, projectId) => User.updateOne({ _id: userId }, { $addToSet: { assignedProjects: projectId } });
 
 export async function createProject(user, input) {
-  if (input.projectManager) await findActiveUser(input.projectManager, 'projectManager');
+  if (input.projectManager) await findActiveProjectManager(input.projectManager, 'projectManager');
 
   const project = await Project.create({ ...input, createdBy: user._id, updatedBy: user._id });
 
@@ -93,7 +110,7 @@ export async function updateProject(user, id, changes) {
   const project = await getAccessibleProject(user, id);
   const previousManager = project.projectManager?._id ? String(project.projectManager._id) : null;
 
-  if (changes.projectManager) await findActiveUser(changes.projectManager, 'projectManager');
+  if (changes.projectManager) await findActiveProjectManager(changes.projectManager, 'projectManager');
 
   const start = changes.startDate !== undefined ? changes.startDate : project.startDate;
   const plannedEnd = changes.plannedEndDate !== undefined ? changes.plannedEndDate : project.plannedEndDate;
@@ -140,11 +157,52 @@ export async function listTeam(user, projectId) {
   }));
 }
 
-export async function addTeamMember(user, projectId, memberId) {
+export async function addTeamMember(user, projectId, payload) {
   const project = await getAccessibleProject(user, projectId, { lean: true });
-  const member = await findActiveUser(memberId, 'userId');
-  await assignToProject(member._id, project._id);
-  return { project, member };
+  const rawIds = payload.userIds ? payload.userIds : payload.userId ? [payload.userId] : [];
+  const targetIds = [...new Set(rawIds.map(String))];
+
+  if (!targetIds.length) {
+    throw ApiError.badRequest('Select at least one employee to assign');
+  }
+
+  // 1. Verify all target users exist and are active
+  const activeMembers = await User.find({ _id: { $in: targetIds }, status: USER_STATUS.ACTIVE })
+    .select(`${PERSON_FIELDS} role`)
+    .populate('role', 'name key');
+
+  if (activeMembers.length !== targetIds.length) {
+    throw ApiError.validation([{ field: 'userId', message: 'Choose active employees only' }]);
+  }
+
+  // 2. Prevent duplicate assignments: check who is already assigned
+  const alreadyAssigned = await User.find({
+    _id: { $in: targetIds },
+    assignedProjects: project._id,
+  }).select('_id');
+  const alreadyAssignedSet = new Set(alreadyAssigned.map((u) => String(u._id)));
+
+  if (targetIds.length === 1 && alreadyAssignedSet.has(targetIds[0])) {
+    throw ApiError.badRequest('This employee is already assigned to the project');
+  }
+
+  const toAssign = targetIds.filter((id) => !alreadyAssignedSet.has(id));
+  if (toAssign.length === 0) {
+    throw ApiError.badRequest('All selected employees are already assigned to this project');
+  }
+
+  await User.updateMany(
+    { _id: { $in: toAssign } },
+    { $addToSet: { assignedProjects: project._id } },
+  );
+
+  return {
+    project,
+    member: activeMembers[0],
+    assignedCount: toAssign.length,
+    alreadyAssignedCount: alreadyAssignedSet.size,
+    members: activeMembers,
+  };
 }
 
 export async function removeTeamMember(user, projectId, memberId) {
@@ -158,12 +216,28 @@ export async function removeTeamMember(user, projectId, memberId) {
 }
 
 /** Active users to pick as team members or project manager. Minimal fields only. */
-export async function lookupUsers(query) {
+export async function lookupUsers(query = {}) {
   const filter = { status: USER_STATUS.ACTIVE };
   if (query.q) {
     const pattern = new RegExp(escapeRegex(query.q), 'i');
     filter.$or = [{ firstName: pattern }, { lastName: pattern }, { email: pattern }];
   }
-  const people = await User.find(filter).select(`${PERSON_FIELDS} role`).populate('role', 'name key').sort({ firstName: 1 }).limit(20).lean();
-  return people.map((person) => ({ ...toPerson(person), role: person.role ? { key: person.role.key, name: person.role.name } : null }));
+  let people = await User.find(filter)
+    .select(`${PERSON_FIELDS} role`)
+    .populate('role', 'name key')
+    .sort({ firstName: 1 })
+    .limit(50)
+    .lean();
+
+  if (query.forProjectManager === 'true' || query.forProjectManager === true) {
+    people = people.filter((p) => {
+      const key = p.role?.key;
+      return ELIGIBLE_PM_ROLES.includes(key);
+    });
+  }
+
+  return people.map((person) => ({
+    ...toPerson(person),
+    role: person.role ? { key: person.role.key, name: person.role.name } : null,
+  }));
 }

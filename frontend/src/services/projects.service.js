@@ -8,5 +8,8 @@ export const projectsService = {
   team: (id) => api.get(`/projects/${id}/team`).then(unwrap),
   addMember: (id, userId) => api.post(`/projects/${id}/team`, { userId }).then(unwrap),
   removeMember: (id, userId) => api.delete(`/projects/${id}/team/${userId}`).then(unwrap),
-  lookupUsers: (q) => api.get('/projects/lookup/users', { params: q ? { q } : undefined }).then(unwrap),
+  lookupUsers: (param) => {
+    const params = typeof param === 'string' ? (param ? { q: param } : undefined) : param;
+    return api.get('/projects/lookup/users', { params }).then(unwrap);
+  },
 };

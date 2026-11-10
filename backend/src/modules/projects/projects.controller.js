@@ -40,9 +40,13 @@ export async function team(req, res) {
 }
 
 export async function addMember(req, res) {
-  const { project, member } = await service.addTeamMember(req.user, req.validated.params.id, req.body.userId);
-  audit(req, 'project.team_add', project, { summary: `Added ${member.email} to ${project.code}`, changes: { userId: String(member._id) } });
-  sendSuccess(res, null, { status: 201, message: 'Team member added' });
+  const result = await service.addTeamMember(req.user, req.validated.params.id, req.body);
+  const { project, member, assignedCount } = result;
+  audit(req, 'project.team_add', project, {
+    summary: `Added ${assignedCount > 1 ? `${assignedCount} members` : member?.email} to ${project.code}`,
+    changes: { userIds: req.body.userIds || [req.body.userId] },
+  });
+  sendSuccess(res, result, { status: 201, message: assignedCount > 1 ? `${assignedCount} team members added` : 'Team member added' });
 }
 
 export async function removeMember(req, res) {

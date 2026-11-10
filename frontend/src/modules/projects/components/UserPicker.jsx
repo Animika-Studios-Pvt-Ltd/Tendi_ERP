@@ -9,7 +9,7 @@ import { projectsService } from '@/services/projects.service';
 import { cn } from '@/utils/cn';
 
 /** Searches active users (name or email) and calls onSelect with the chosen person. */
-export default function UserPicker({ onSelect, excludeIds = [], placeholder = 'Search people by name or email', disabled, id, ...inputProps }) {
+export default function UserPicker({ onSelect, excludeIds = [], forProjectManager = false, placeholder = 'Search people by name or email', disabled, id, ...inputProps }) {
   const listId = useId();
   const containerRef = useRef(null);
   const [open, setOpen] = useState(false);
@@ -28,14 +28,14 @@ export default function UserPicker({ onSelect, excludeIds = [], placeholder = 'S
     setLoading(true);
     setError(null);
     projectsService
-      .lookupUsers(q)
+      .lookupUsers(forProjectManager ? { q, forProjectManager: true } : { q })
       .then(({ data }) => !cancelled && setResults(data))
       .catch((err) => !cancelled && setError(err))
       .finally(() => !cancelled && setLoading(false));
     return () => {
       cancelled = true;
     };
-  }, [q, open]);
+  }, [q, open, forProjectManager]);
 
   const visible = results.filter((person) => !excludeIds.includes(person.id));
 

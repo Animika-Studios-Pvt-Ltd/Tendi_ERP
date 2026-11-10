@@ -22,8 +22,10 @@ export function AuthProvider({ children }) {
     } catch (error) {
       setUser(null);
       setStatus('unauthenticated');
-      // 401 just means "not signed in"; anything else is worth surfacing on the sign-in screen.
-      setSessionError(error.status === 401 ? null : error);
+      // If 401 is just a cold visit without credentials, don't show an error.
+      // If 401 has a specific reason (expired session, deactivated account, changed password), surface it.
+      const isColdVisit = error.status === 401 && (!error.message || error.message.toLowerCase() === 'unauthorized');
+      setSessionError(isColdVisit ? null : error);
     }
   }, []);
 
@@ -32,9 +34,10 @@ export function AuthProvider({ children }) {
   }, [loadSession]);
 
   useEffect(() => {
-    const handleUnauthorized = () => {
+    const handleUnauthorized = (event) => {
       setUser(null);
       setStatus('unauthenticated');
+      setSessionError(event?.detail ?? { message: 'Your session has expired. Sign in again.' });
     };
     window.addEventListener(AUTH_EVENTS.UNAUTHORIZED, handleUnauthorized);
     return () => window.removeEventListener(AUTH_EVENTS.UNAUTHORIZED, handleUnauthorized);
@@ -54,6 +57,7 @@ export function AuthProvider({ children }) {
     } finally {
       setUser(null);
       setStatus('unauthenticated');
+      setSessionError(null);
     }
   }, []);
 

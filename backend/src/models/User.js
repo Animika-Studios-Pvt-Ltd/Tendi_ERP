@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import bcrypt from 'bcrypt';
 import mongoose from 'mongoose';
 import { env } from '../config/env.js';
+import { ACTION_LIST, MODULE_LIST } from '../config/rbac.js';
 
 const { Schema } = mongoose;
 
@@ -9,6 +10,15 @@ export const USER_STATUS = Object.freeze({ ACTIVE: 'active', INACTIVE: 'inactive
 
 const MAX_FAILED_LOGINS = 5;
 const LOCK_DURATION_MS = 15 * 60 * 1000;
+
+const permissionOverrideSchema = new Schema(
+  {
+    module: { type: String, enum: MODULE_LIST, required: true },
+    action: { type: String, enum: ACTION_LIST, required: true },
+    granted: { type: Boolean, required: true },
+  },
+  { _id: false },
+);
 
 const userSchema = new Schema(
   {
@@ -39,6 +49,11 @@ const userSchema = new Schema(
       url: String,
       key: String,
       provider: String,
+    },
+
+    permissionOverrides: {
+      type: [permissionOverrideSchema],
+      default: [],
     },
 
     lastLoginAt: Date,
@@ -111,6 +126,77 @@ userSchema.methods.createPasswordResetToken = function createPasswordResetToken(
   this.passwordResetTokenHash = hashToken(token);
   this.passwordResetExpiresAt = new Date(Date.now() + env.PASSWORD_RESET_TTL_MINUTES * 60 * 1000);
   return token;
+};
+
+/**
+ * Evaluates whether this user has permission for (module, action).
+ * 1. Checks individual permission overrides first (explicit grant or deny).
+ * 2. If no override exists, falls back to role default.
+ * 3. If neither grants it, returns false (denied by default).
+ */
+userSchema.methods.can = function can(module, action) {
+  if (Array.isArray(this.permissionOverrides)) {
+    const override = this.permissionOverrides.find(
+      (o) => o.module === module && o.action === action,
+    );
+    if (override !== undefined) {
+      return Boolean(override.granted);
+    }
+  }
+
+  if (this.role && typeof this.role.can === 'function') {
+    return this.role.can(module, action);
+  }
+
+  if (this.role && Array.isArray(this.role.permissions)) {
+    return this.role.permissions.some(
+      (grant) => grant.module === module && grant.actions.includes(action),
+    );
+  }
+
+  return false;
+};
+
+/**
+ * Returns a complete { [module]: actions[] } map representing the user's active permissions.
+ * Starts from role defaults and applies individual user overrides (grants add, denies remove).
+ */
+userSchema.methods.toEffectivePermissionMap = function toEffectivePermissionMap() {
+  const map = {};
+  for (const mod of MODULE_LIST) {
+    map[mod] = [];
+  }
+
+  if (this.role) {
+    const roleMap =
+      typeof this.role.toPermissionMap === 'function'
+        ? this.role.toPermissionMap()
+        : Array.isArray(this.role.permissions)
+          ? Object.fromEntries(this.role.permissions.map((g) => [g.module, [...g.actions]]))
+          : {};
+
+    for (const [mod, acts] of Object.entries(roleMap)) {
+      if (Array.isArray(acts)) {
+        map[mod] = [...acts];
+      }
+    }
+  }
+
+  if (Array.isArray(this.permissionOverrides)) {
+    for (const override of this.permissionOverrides) {
+      const { module: mod, action: act, granted } = override;
+      if (!map[mod]) map[mod] = [];
+      if (granted) {
+        if (!map[mod].includes(act)) {
+          map[mod].push(act);
+        }
+      } else {
+        map[mod] = map[mod].filter((a) => a !== act);
+      }
+    }
+  }
+
+  return map;
 };
 
 export function hashToken(token) {

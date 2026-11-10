@@ -3,6 +3,8 @@ import { requireDatabase } from '../middleware/common.js';
 import authRoutes from '../modules/auth/auth.routes.js';
 import healthRoutes, { readinessHandler } from '../modules/health/health.routes.js';
 import projectRoutes from '../modules/projects/projects.routes.js';
+import roleRoutes from '../modules/roles/roles.routes.js';
+import userRoutes from '../modules/users/users.routes.js';
 
 const router = Router();
 
@@ -12,6 +14,8 @@ router.get('/ready', readinessHandler);
 // Everything below needs MongoDB.
 router.use(requireDatabase);
 router.use('/auth', authRoutes);
+router.use('/users', userRoutes);
+router.use('/roles', roleRoutes);
 
 /*
  * Business modules are mounted here as they are built, each protected with

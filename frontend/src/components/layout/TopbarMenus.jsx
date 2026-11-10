@@ -114,7 +114,14 @@ export function UserMenu() {
             )}
           </ul>
           <div className="border-t border-line py-1">
-            <button type="button" onClick={logout} className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-danger-700 hover:bg-danger-50">
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                logout();
+              }}
+              className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-danger-700 hover:bg-danger-50"
+            >
               <LogOut size={16} /> Sign out
             </button>
           </div>
