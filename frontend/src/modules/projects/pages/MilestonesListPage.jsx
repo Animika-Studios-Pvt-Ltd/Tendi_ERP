@@ -13,6 +13,7 @@ import Textarea from '@/components/ui/Textarea';
 import { ACTIONS, MODULES } from '@/constants/permissions';
 import { useAuth } from '@/hooks/useAuth';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useWorkingProjectFilter } from '@/hooks/useWorkingProjectFilter';
 import { projectsService } from '@/services/projects.service';
 import { formatDate } from '@/utils/format';
 import ProgressBar from '../components/ProgressBar';
@@ -27,7 +28,7 @@ export default function MilestonesListPage() {
   const canDelete = can(MODULES.PROJECTS, ACTIONS.DELETE);
 
   const [search, setSearch] = useState('');
-  const [projectFilter, setProjectFilter] = useState('');
+  const [projectFilter, setProjectFilter] = useWorkingProjectFilter();
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const q = useDebouncedValue(search.trim());

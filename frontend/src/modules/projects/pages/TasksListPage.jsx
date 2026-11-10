@@ -14,6 +14,7 @@ import Textarea from '@/components/ui/Textarea';
 import { ACTIONS, MODULES } from '@/constants/permissions';
 import { useAuth } from '@/hooks/useAuth';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useWorkingProjectFilter } from '@/hooks/useWorkingProjectFilter';
 import { projectsService } from '@/services/projects.service';
 import { formatDate } from '@/utils/format';
 import ProgressBar from '../components/ProgressBar';
@@ -35,7 +36,7 @@ export default function TasksListPage() {
   const canDelete = can(MODULES.PROJECTS, ACTIONS.DELETE);
 
   const [search, setSearch] = useState('');
-  const [projectFilter, setProjectFilter] = useState('');
+  const [projectFilter, setProjectFilter] = useWorkingProjectFilter();
   const [statusFilter, setStatusFilter] = useState('');
   const [priorityFilter, setPriorityFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -43,6 +44,7 @@ export default function TasksListPage() {
 
   const [projects, setProjects] = useState([]);
   const [milestones, setMilestones] = useState([]);
+  const [projectTasks, setProjectTasks] = useState([]);
   const [users, setUsers] = useState([]);
   const [state, setState] = useState({ data: [], meta: null, loading: true, error: null });
 
@@ -56,12 +58,17 @@ export default function TasksListPage() {
   const [title, setTitle] = useState('');
   const [project, setProject] = useState('');
   const [milestone, setMilestone] = useState('');
+  const [parentTask, setParentTask] = useState('');
+  const [wbsCode, setWbsCode] = useState('');
+  const [workPackage, setWorkPackage] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [status, setStatus] = useState('todo');
   const [priority, setPriority] = useState('medium');
   const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [estimatedHours, setEstimatedHours] = useState('0');
   const [progressPercent, setProgressPercent] = useState('0');
+  const [dependencies, setDependencies] = useState([]);
   const [description, setDescription] = useState('');
 
   useEffect(() => {
@@ -94,19 +101,22 @@ export default function TasksListPage() {
 
   useEffect(() => setPage(1), [q, projectFilter, statusFilter, priorityFilter]);
 
-  // Load milestones & users when modal project changes
+  // Load milestones, project tasks & users when modal project changes
   useEffect(() => {
     if (!modalOpen || !project) {
       setMilestones([]);
+      setProjectTasks([]);
       return;
     }
     Promise.all([
       projectsService.listMilestones({ project, limit: 100 }),
       projectsService.team(project).catch(() => ({ data: [] })),
+      projectsService.listTasks({ project, limit: 100 }).catch(() => ({ data: [] })),
     ])
-      .then(([mRes, tRes]) => {
+      .then(([mRes, tRes, pTasksRes]) => {
         setMilestones(mRes.data || []);
         setUsers(tRes.data || []);
+        setProjectTasks(pTasksRes.data || []);
       })
       .catch(() => {});
   }, [modalOpen, project]);
@@ -116,12 +126,17 @@ export default function TasksListPage() {
     setTitle('');
     setProject(projectFilter || (projects[0]?.id ?? ''));
     setMilestone('');
+    setParentTask('');
+    setWbsCode('');
+    setWorkPackage('');
     setAssignedTo('');
     setStatus('todo');
     setPriority('medium');
     setStartDate('');
     setDueDate('');
+    setEstimatedHours('0');
     setProgressPercent('0');
+    setDependencies([]);
     setDescription('');
     setFormError(null);
     setModalOpen(true);
@@ -132,15 +147,24 @@ export default function TasksListPage() {
     setTitle(task.title);
     setProject(task.project?.id || '');
     setMilestone(task.milestone?.id || '');
+    setParentTask(task.parentTask?.id || '');
+    setWbsCode(task.wbsCode || '');
+    setWorkPackage(task.workPackage || '');
     setAssignedTo(task.assignedTo?.id || '');
     setStatus(task.status);
     setPriority(task.priority);
     setStartDate(task.startDate ? task.startDate.slice(0, 10) : '');
     setDueDate(task.dueDate ? task.dueDate.slice(0, 10) : '');
+    setEstimatedHours(String(task.estimatedHours ?? 0));
     setProgressPercent(String(task.progressPercent ?? 0));
+    setDependencies((task.dependencies || []).map((d) => (typeof d === 'object' ? d.id : d)));
     setDescription(task.description || '');
     setFormError(null);
     setModalOpen(true);
+  };
+
+  const toggleDependency = (depId) => {
+    setDependencies((prev) => (prev.includes(depId) ? prev.filter((id) => id !== depId) : [...prev, depId]));
   };
 
   const handleSave = async (e) => {
@@ -155,12 +179,17 @@ export default function TasksListPage() {
       title: title.trim(),
       project,
       milestone: milestone || null,
+      parentTask: parentTask || null,
+      wbsCode: wbsCode.trim().toUpperCase(),
+      workPackage: workPackage.trim(),
       assignedTo: assignedTo || null,
       status,
       priority,
       startDate: startDate || null,
       dueDate: dueDate || null,
+      estimatedHours: Number(estimatedHours) || 0,
       progressPercent: Number(progressPercent) || 0,
+      dependencies,
       description: description.trim(),
     };
 
@@ -202,11 +231,16 @@ export default function TasksListPage() {
       header: 'Task',
       render: (t) => (
         <div className="min-w-0">
-          <p className="truncate font-medium text-ink">{t.title}</p>
+          <p className="truncate font-medium text-ink">
+            {t.wbsCode ? <span className="mr-1.5 font-mono text-xs text-navy-600">{t.wbsCode}</span> : null}
+            {t.title}
+          </p>
           <p className="tabular text-xs text-muted font-mono">
             {t.code}
+            {t.workPackage ? ` · ${t.workPackage}` : ''}
             {t.project ? ` · ${t.project.code}` : ''}
             {t.milestone ? ` · ${t.milestone.title}` : ''}
+            {t.dependencies?.length ? ` · ${t.dependencies.length} dep(s)` : ''}
           </p>
         </div>
       ),
@@ -340,6 +374,40 @@ export default function TasksListPage() {
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div>
+                    <label className="mb-1 block text-xs font-semibold text-ink">WBS Code</label>
+                    <Input
+                      value={wbsCode}
+                      onChange={(e) => setWbsCode(e.target.value.toUpperCase())}
+                      placeholder="e.g. 1.2.1"
+                      className="font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-ink">Work Package</label>
+                    <Input
+                      value={workPackage}
+                      onChange={(e) => setWorkPackage(e.target.value)}
+                      placeholder="e.g. Substructure RCC"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-ink">Parent WBS Task</label>
+                    <Select
+                      value={parentTask}
+                      onChange={(e) => setParentTask(e.target.value)}
+                      options={[
+                        { value: '', label: 'Top-level task' },
+                        ...projectTasks
+                          .filter((pt) => !editingTask || pt.id !== editingTask.id)
+                          .map((pt) => ({ value: pt.id, label: `${pt.wbsCode || pt.code} - ${pt.title}` })),
+                      ]}
+                      disabled={!project}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                  <div>
                     <label className="mb-1 block text-xs font-semibold text-ink">Status</label>
                     <Select
                       value={status}
@@ -356,6 +424,15 @@ export default function TasksListPage() {
                     />
                   </div>
                   <div>
+                    <label className="mb-1 block text-xs font-semibold text-ink">Est. Hours</label>
+                    <Input
+                      type="number"
+                      min="0"
+                      value={estimatedHours}
+                      onChange={(e) => setEstimatedHours(e.target.value)}
+                    />
+                  </div>
+                  <div>
                     <label className="mb-1 block text-xs font-semibold text-ink">Progress (%)</label>
                     <Input
                       type="number"
@@ -366,6 +443,28 @@ export default function TasksListPage() {
                     />
                   </div>
                 </div>
+
+                {projectTasks.filter((pt) => !editingTask || pt.id !== editingTask.id).length > 0 && (
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-ink">Predecessor Dependencies</label>
+                    <div className="max-h-24 overflow-y-auto rounded-md border border-line bg-canvas p-2 space-y-1">
+                      {projectTasks
+                        .filter((pt) => !editingTask || pt.id !== editingTask.id)
+                        .map((pt) => (
+                          <label key={pt.id} className="flex items-center gap-2 text-xs text-ink cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={dependencies.includes(pt.id)}
+                              onChange={() => toggleDependency(pt.id)}
+                              className="h-3.5 w-3.5 rounded border-line"
+                            />
+                            <span className="font-mono text-muted">{pt.code}</span>
+                            <span className="truncate">{pt.title}</span>
+                          </label>
+                        ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <div>
@@ -458,7 +557,7 @@ export default function TasksListPage() {
             state.meta
               ? {
                   page: state.meta.page,
-                  totalPages: state.meta.totalPages,
+                  limit: state.meta.limit ?? PAGE_SIZE,
                   total: state.meta.total,
                   onPageChange: setPage,
                 }

@@ -10,5 +10,6 @@ export const usersService = {
   assignProjects: (id, projectIds) => api.post(`/users/${id}/projects`, { projectIds }).then(unwrap),
   removeProject: (id, projectId) => api.delete(`/users/${id}/projects/${projectId}`).then(unwrap),
   availableProjects: (id) => api.get(`/users/${id}/available-projects`).then(unwrap),
+  listAuditLogs: (params) => api.get('/users/audit-logs', { params }).then(unwrap),
 };
 

@@ -100,3 +100,15 @@ export async function deleteMilestone(req, res) {
   sendSuccess(res, null, { message: 'Milestone deleted successfully' });
 }
 
+/* WBS & GANTT */
+
+export async function getWbs(req, res) {
+  const data = await taskService.getWbsTree(req.user, req.validated.params.id);
+  sendSuccess(res, data);
+}
+
+export async function getGantt(req, res) {
+  const data = await taskService.getGanttSchedule(req.user, req.validated.params.id);
+  sendSuccess(res, data);
+}
+

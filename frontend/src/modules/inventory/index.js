@@ -1,5 +1,10 @@
 import { Boxes } from 'lucide-react';
+import { lazy } from 'react';
 import { MODULES } from '@/constants/permissions';
+
+const StockOverviewPage = lazy(() => import('./pages/StockOverviewPage'));
+const MaterialsListPage = lazy(() => import('./pages/MaterialsListPage'));
+const TransactionsListPage = lazy(() => import('./pages/TransactionsListPage'));
 
 export default {
   key: MODULES.INVENTORY,
@@ -10,10 +15,11 @@ export default {
   group: 'supply',
   phase: 3,
   description: 'Track material stock by site and store, with every movement recorded as a transaction.',
+  element: StockOverviewPage,
   sections: [
-    { path: '', title: 'Stock overview' },
-    { path: 'materials', title: 'Material master' },
-    { path: 'transactions', title: 'Stock movements' },
+    { path: '', title: 'Stock overview', element: StockOverviewPage },
+    { path: 'materials', title: 'Material master', element: MaterialsListPage },
+    { path: 'transactions', title: 'Stock movements', element: TransactionsListPage },
   ],
   capabilities: [
     'Material master with units, categories and reorder levels',

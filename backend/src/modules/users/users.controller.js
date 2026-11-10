@@ -82,3 +82,8 @@ export async function listAvailableProjects(req, res) {
   sendSuccess(res, projects);
 }
 
+export async function listAuditLogs(req, res) {
+  const { items, meta } = await service.listAuditLogs(req.validated.query);
+  sendSuccess(res, items, { meta });
+}
+

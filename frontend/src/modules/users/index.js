@@ -6,6 +6,7 @@ const UsersListPage = lazy(() => import('./pages/UsersListPage'));
 const UserFormPage = lazy(() => import('./pages/UserFormPage'));
 const UserDetailPage = lazy(() => import('./pages/UserDetailPage'));
 const RolesListPage = lazy(() => import('./pages/RolesListPage'));
+const AuditLogPage = lazy(() => import('./pages/AuditLogPage'));
 
 export default {
   key: MODULES.USERS,
@@ -20,7 +21,7 @@ export default {
   sections: [
     { path: '', title: 'Users' },
     { path: 'roles', title: 'Roles & access', element: RolesListPage },
-    { path: 'audit-log', title: 'Audit log' },
+    { path: 'audit-log', title: 'Audit log', element: AuditLogPage },
   ],
   routes: [
     { path: 'new', title: 'New user', element: UserFormPage, action: ACTIONS.CREATE },

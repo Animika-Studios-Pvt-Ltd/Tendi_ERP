@@ -6,6 +6,7 @@ import * as controller from './users.controller.js';
 import {
   assignProjectsSchema,
   createUserSchema,
+  listAuditLogsQuery,
   listUsersQuery,
   updatePermissionsSchema,
   updateStatusSchema,
@@ -20,6 +21,7 @@ const can = (action) => authorize(MODULES.USERS, action);
 const router = Router();
 router.use(authenticate);
 
+router.get('/audit-logs', can(READ), validate({ query: listAuditLogsQuery }), controller.listAuditLogs);
 router.get('/', can(READ), validate({ query: listUsersQuery }), controller.list);
 router.post('/', can(CREATE), validate({ body: createUserSchema }), controller.create);
 router.get('/:id', can(READ), validate({ params: userIdParams }), controller.get);

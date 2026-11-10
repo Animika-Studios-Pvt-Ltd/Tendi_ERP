@@ -1,11 +1,15 @@
-import { Bell, ClipboardCheck, LogOut, Settings, UserRound } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Bell, CheckCheck, ClipboardCheck, LogOut, Settings, UserRound } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import EmptyState from '@/components/common/EmptyState';
+import StatusBadge from '@/components/common/StatusBadge';
 import Avatar from '@/components/ui/Avatar';
 import Popover from '@/components/ui/Popover';
 import { MODULES } from '@/constants/permissions';
 import { useAuth } from '@/hooks/useAuth';
+import { notificationsService } from '@/services/notifications.service';
 import { cn } from '@/utils/cn';
+import { formatCurrencyCompact, formatDateTime } from '@/utils/format';
 
 function IconTrigger({ icon: Icon, label, count = 0, open, props }) {
   return (
@@ -38,35 +42,184 @@ function PanelHeader({ title, action }) {
   );
 }
 
-/** Wired to the Notification model in a later phase; renders the empty state until then. */
-export function NotificationsMenu({ notifications = [] }) {
+export function NotificationsMenu() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [items, setItems] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const refresh = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await notificationsService.list({ limit: 10 });
+      setItems(res.data || []);
+      setUnreadCount(res.meta?.unreadCount ?? 0);
+    } catch {
+      // ignore silent poll errors
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => clearInterval(timer);
+  }, [refresh]);
+
+  const handleMarkRead = async (item, close) => {
+    if (!item.isRead) {
+      notificationsService.markRead(item.id).then(refresh).catch(() => {});
+    }
+    if (item.link) {
+      close();
+      navigate(item.link);
+    }
+  };
+
+  const handleMarkAll = async () => {
+    try {
+      await notificationsService.markAllRead();
+      refresh();
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <Popover
       label="Notifications"
-      width="w-80"
-      trigger={(state) => <IconTrigger icon={Bell} label="Notifications" count={notifications.length} {...state} />}
+      width="w-80 sm:w-96"
+      trigger={(state) => <IconTrigger icon={Bell} label="Notifications" count={unreadCount} {...state} />}
     >
-      <PanelHeader title="Notifications" />
-      <EmptyState compact icon={Bell} title="You're all caught up" description="Alerts about approvals, stock and site issues will show up here." />
+      {({ close }) => (
+        <div>
+          <PanelHeader
+            title="Notifications"
+            action={
+              unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAll}
+                  className="inline-flex items-center gap-1 text-xs font-medium text-navy-700 hover:underline"
+                >
+                  <CheckCheck size={14} /> Mark all read
+                </button>
+              )
+            }
+          />
+          {items.length === 0 ? (
+            <EmptyState
+              compact
+              icon={Bell}
+              title="You're all caught up"
+              description="Alerts about approvals, stock and site issues will show up here."
+            />
+          ) : (
+            <ul className="max-h-80 divide-y divide-line overflow-y-auto">
+              {items.map((item) => (
+                <li key={item.id}>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkRead(item, close)}
+                    className={cn(
+                      'block w-full px-4 py-2.5 text-left transition-colors hover:bg-navy-50/70',
+                      !item.isRead && 'bg-accent-50/30',
+                    )}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={cn('text-xs font-medium text-ink', !item.isRead && 'font-semibold')}>
+                        {item.title}
+                      </p>
+                      {!item.isRead && <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-accent-500" />}
+                    </div>
+                    {item.message && <p className="mt-0.5 line-clamp-2 text-xs text-muted">{item.message}</p>}
+                    <p className="mt-1 text-[11px] text-subtle">{formatDateTime(item.createdAt)}</p>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </Popover>
   );
 }
 
 /** Aggregates items waiting on the user's approval across workflow modules. */
-export function ApprovalsMenu({ approvals = [] }) {
+export function ApprovalsMenu() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [approvals, setApprovals] = useState([]);
+
+  const refresh = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await notificationsService.pendingApprovals();
+      setApprovals(res.data || []);
+    } catch {
+      // ignore silent poll errors
+    }
+  }, [user]);
+
+  useEffect(() => {
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => clearInterval(timer);
+  }, [refresh]);
+
   return (
     <Popover
       label="Pending approvals"
-      width="w-80"
-      trigger={(state) => <IconTrigger icon={ClipboardCheck} label="Pending approvals" count={approvals.length} {...state} />}
+      width="w-80 sm:w-96"
+      trigger={(state) => (
+        <IconTrigger icon={ClipboardCheck} label="Pending approvals" count={approvals.length} {...state} />
+      )}
     >
-      <PanelHeader title="Pending approvals" />
-      <EmptyState
-        compact
-        icon={ClipboardCheck}
-        title="Nothing waiting on you"
-        description="Material requests, expenses, progress reports and bills that need your approval will be listed here."
-      />
+      {({ close }) => (
+        <div>
+          <PanelHeader title="Pending approvals" action={<span className="text-xs text-muted">{approvals.length} waiting</span>} />
+          {approvals.length === 0 ? (
+            <EmptyState
+              compact
+              icon={ClipboardCheck}
+              title="Nothing waiting on you"
+              description="Material requests, expenses, progress reports and bills that need your approval will be listed here."
+            />
+          ) : (
+            <ul className="max-h-80 divide-y divide-line overflow-y-auto">
+              {approvals.map((item) => (
+                <li key={`${item.module}-${item.id}`}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      close();
+                      if (item.link) navigate(item.link);
+                    }}
+                    className="block w-full px-4 py-2.5 text-left transition-colors hover:bg-navy-50/70"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="truncate text-xs font-semibold text-ink">{item.title}</p>
+                      {item.amount != null && (
+                        <span className="tabular shrink-0 text-xs font-semibold text-ink">
+                          {formatCurrencyCompact(item.amount)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-[11px] text-muted">
+                      {item.type} · {item.project}
+                    </p>
+                    <div className="mt-1.5 flex items-center justify-between gap-2">
+                      <span className="truncate text-[11px] text-subtle">
+                        From {item.requestedBy || 'User'}
+                      </span>
+                      <StatusBadge status={item.status} />
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </Popover>
   );
 }

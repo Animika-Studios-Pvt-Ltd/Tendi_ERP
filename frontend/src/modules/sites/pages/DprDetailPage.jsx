@@ -69,6 +69,8 @@ export default function DprDetailPage() {
   const isSubmitted = dpr.status === 'submitted';
   const isApproved = dpr.status === 'approved';
   const isRejected = dpr.status === 'rejected';
+  const isReturned = dpr.status === 'returned';
+  const canEditStatus = isDraft || isRejected || isReturned;
 
   const totalHeadcount = (dpr.labourAttendance || []).reduce(
     (acc, curr) => acc + (curr.headcount || 0),
@@ -80,7 +82,7 @@ export default function DprDetailPage() {
       <Button variant="outline" leftIcon={ArrowLeft} onClick={() => navigate('/sites/daily-progress')}>
         Back
       </Button>
-      {(isDraft || isRejected) && canUpdate && (
+      {canEditStatus && canUpdate && (
         <Button leftIcon={Edit3} onClick={() => navigate(`/sites/daily-progress/${dpr.id}/edit`)}>
           Edit report
         </Button>
@@ -166,11 +168,13 @@ export default function DprDetailPage() {
         </div>
       )}
 
-      {isRejected && (
+      {(isRejected || isReturned) && (
         <div className="mb-6 rounded-lg border border-danger-200 bg-danger-50/50 p-4 flex items-center gap-3">
           <ShieldAlert className="h-5 w-5 text-danger-600 shrink-0" />
           <div className="text-xs">
-            <span className="font-bold text-danger-900">Report Rejected</span>
+            <span className="font-bold text-danger-900">
+              {isReturned ? 'Returned for Correction' : 'Report Rejected'}
+            </span>
             <span className="text-danger-800 ml-1">
               by {dpr.decidedBy?.fullName}: {dpr.decisionComment || 'Needs revision'}.
             </span>

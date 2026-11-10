@@ -12,6 +12,7 @@ import Select from '@/components/ui/Select';
 import { ACTIONS, MODULES } from '@/constants/permissions';
 import { useAuth } from '@/hooks/useAuth';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useWorkingProjectFilter } from '@/hooks/useWorkingProjectFilter';
 import { projectsService } from '@/services/projects.service';
 import { sitesService } from '@/services/sites.service';
 import { formatDate } from '@/utils/format';
@@ -25,7 +26,7 @@ export default function DprListPage() {
   const canCreate = can(MODULES.SITES, ACTIONS.CREATE);
 
   const [search, setSearch] = useState('');
-  const [projectFilter, setProjectFilter] = useState('');
+  const [projectFilter, setProjectFilter] = useWorkingProjectFilter();
   const [statusFilter, setStatusFilter] = useState('');
   const [page, setPage] = useState(1);
   const q = useDebouncedValue(search.trim());
@@ -187,7 +188,7 @@ export default function DprListPage() {
             state.meta
               ? {
                   page: state.meta.page,
-                  totalPages: state.meta.totalPages,
+                  limit: state.meta.limit ?? PAGE_SIZE,
                   total: state.meta.total,
                   onPageChange: setPage,
                 }

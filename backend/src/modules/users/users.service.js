@@ -1,4 +1,5 @@
 import { ROLES } from '../../config/rbac.js';
+import { AuditLog } from '../../models/AuditLog.js';
 import { Project } from '../../models/Project.js';
 import { Role } from '../../models/Role.js';
 import { User, USER_STATUS } from '../../models/User.js';
@@ -379,5 +380,53 @@ export async function listAvailableProjectsForUser(actor, userId) {
           }
         : null,
     }));
+}
+
+export async function listAuditLogs(query = {}) {
+  const pagination = parsePagination(query, {
+    allowedSortFields: ['createdAt', 'module', 'action'],
+    defaultSort: '-createdAt',
+  });
+
+  const filter = {};
+  if (query.module) filter.module = query.module;
+  if (query.action) filter.action = new RegExp(escapeRegex(query.action.trim()), 'i');
+  if (query.project) filter.project = query.project;
+  if (query.q) {
+    const rx = new RegExp(escapeRegex(query.q.trim()), 'i');
+    filter.$or = [{ summary: rx }, { action: rx }, { entityType: rx }];
+  }
+
+  const { items, meta } = await paginate(AuditLog, filter, pagination, {
+    populate: [
+      { path: 'actor', select: 'firstName lastName email' },
+      { path: 'project', select: 'code name' },
+    ],
+  });
+
+  return {
+    items: items.map((entry) => ({
+      id: String(entry._id),
+      action: entry.action,
+      module: entry.module,
+      entityType: entry.entityType ?? '',
+      entityId: entry.entityId ? String(entry.entityId) : null,
+      project: entry.project
+        ? { id: String(entry.project._id || entry.project), code: entry.project.code ?? '', name: entry.project.name ?? '' }
+        : null,
+      actor: entry.actor
+        ? {
+            id: String(entry.actor._id),
+            fullName: [entry.actor.firstName, entry.actor.lastName].filter(Boolean).join(' '),
+            email: entry.actor.email,
+          }
+        : null,
+      summary: entry.summary ?? '',
+      changes: entry.changes ?? null,
+      ip: entry.ip ?? '',
+      createdAt: entry.createdAt,
+    })),
+    meta,
+  };
 }
 

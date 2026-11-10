@@ -2,8 +2,12 @@ import { Router } from 'express';
 import { requireDatabase } from '../middleware/common.js';
 import authRoutes from '../modules/auth/auth.routes.js';
 import healthRoutes, { readinessHandler } from '../modules/health/health.routes.js';
+import inventoryRoutes from '../modules/inventory/inventory.routes.js';
+import notificationsRoutes from '../modules/notifications/notifications.routes.js';
+import procurementRoutes from '../modules/procurement/procurement.routes.js';
 import projectRoutes from '../modules/projects/projects.routes.js';
 import roleRoutes from '../modules/roles/roles.routes.js';
+import searchRoutes from '../modules/search/search.routes.js';
 import settingsRoutes from '../modules/settings/settings.routes.js';
 import sitesRoutes from '../modules/sites/sites.routes.js';
 import userRoutes from '../modules/users/users.routes.js';
@@ -19,6 +23,8 @@ router.use('/auth', authRoutes);
 router.use('/users', userRoutes);
 router.use('/roles', roleRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/notifications', notificationsRoutes);
+router.use('/search', searchRoutes);
 
 /*
  * Business modules are mounted here as they are built, each protected with
@@ -26,5 +32,7 @@ router.use('/settings', settingsRoutes);
  */
 router.use('/projects', projectRoutes);
 router.use('/sites', sitesRoutes);
+router.use('/inventory', inventoryRoutes);
+router.use('/procurement', procurementRoutes);
 
 export default router;

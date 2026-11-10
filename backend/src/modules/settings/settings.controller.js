@@ -8,6 +8,14 @@ export async function get(_req, res) {
   sendSuccess(res, settings);
 }
 
+export async function getMasterData(_req, res) {
+  const settings = await service.getSettings();
+  sendSuccess(res, {
+    masterData: settings.masterData,
+    preferences: settings.preferences,
+  });
+}
+
 export async function update(req, res) {
   const settings = await service.updateSettings(req.user, req.body);
   recordAudit(req, {

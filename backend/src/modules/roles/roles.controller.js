@@ -1,3 +1,5 @@
+import { MODULES } from '../../config/rbac.js';
+import { recordAudit } from '../../services/audit.service.js';
 import { sendSuccess } from '../../utils/apiResponse.js';
 import * as service from './roles.service.js';
 
@@ -13,6 +15,14 @@ export async function get(req, res) {
 
 export async function update(req, res) {
   const role = await service.updateRole(req.user, req.params.id, req.body);
+  recordAudit(req, {
+    action: 'role.update',
+    module: MODULES.USERS,
+    entityType: 'Role',
+    entityId: role.id,
+    summary: `Updated role permissions for ${role.name} (${role.key})`,
+    changes: { fields: Object.keys(req.body) },
+  });
   sendSuccess(res, role, { message: 'Role permissions updated successfully' });
 }
 

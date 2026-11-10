@@ -1,7 +1,10 @@
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { CHANGE_ORDER_TYPE } from '../../models/ChangeOrder.js';
 import { MILESTONE_STATUS } from '../../models/Milestone.js';
+import { APPROVAL_STATUS } from '../../models/plugins/approvalWorkflow.js';
 import { PROJECT_STATUS } from '../../models/Project.js';
+import { RISK_CATEGORY, RISK_LEVEL, RISK_STATUS } from '../../models/ProjectRisk.js';
 import { TASK_PRIORITY, TASK_STATUS } from '../../models/Task.js';
 
 const text = (max) => z.string().trim().max(max);
@@ -113,30 +116,50 @@ export const listTasksQuery = z.object({
   sort: z.string().max(60).optional(),
 });
 
+const nullableId = z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null);
+
 export const createTaskSchema = z.object({
   title: z.string().trim().min(1, 'Enter task title').max(150),
   code: z.string().trim().toUpperCase().optional(),
   project: objectId,
+  site: nullableId.optional(),
   description: text(2000).optional().default(''),
-  milestone: z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null).optional(),
-  assignedTo: z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null).optional(),
+  milestone: nullableId.optional(),
+  parentTask: nullableId.optional(),
+  wbsCode: text(30).optional().default(''),
+  workPackage: text(120).optional().default(''),
+  assignedTo: nullableId.optional(),
   status: z.enum(Object.values(TASK_STATUS)).optional().default(TASK_STATUS.TODO),
   priority: z.enum(Object.values(TASK_PRIORITY)).optional().default(TASK_PRIORITY.MEDIUM),
+  baselineStartDate: dateField.optional(),
+  baselineDueDate: dateField.optional(),
   startDate: dateField.optional(),
   dueDate: dateField.optional(),
+  estimatedHours: z.coerce.number().min(0).optional().default(0),
+  actualHours: z.coerce.number().min(0).optional().default(0),
+  weightPercent: z.coerce.number().min(0).max(100).optional().default(1),
   progressPercent: z.coerce.number().min(0).max(100).optional().default(0),
   dependencies: z.array(objectId).optional().default([]),
 });
 
 export const updateTaskSchema = z.object({
   title: z.string().trim().min(1).max(150).optional(),
+  site: nullableId.optional(),
   description: text(2000).optional(),
-  milestone: z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null).optional(),
-  assignedTo: z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null).optional(),
+  milestone: nullableId.optional(),
+  parentTask: nullableId.optional(),
+  wbsCode: text(30).optional(),
+  workPackage: text(120).optional(),
+  assignedTo: nullableId.optional(),
   status: z.enum(Object.values(TASK_STATUS)).optional(),
   priority: z.enum(Object.values(TASK_PRIORITY)).optional(),
+  baselineStartDate: dateField.optional(),
+  baselineDueDate: dateField.optional(),
   startDate: dateField.optional(),
   dueDate: dateField.optional(),
+  estimatedHours: z.coerce.number().min(0).optional(),
+  actualHours: z.coerce.number().min(0).optional(),
+  weightPercent: z.coerce.number().min(0).max(100).optional(),
   progressPercent: z.coerce.number().min(0).max(100).optional(),
   dependencies: z.array(objectId).optional(),
 });
@@ -172,4 +195,79 @@ export const updateMilestoneSchema = z.object({
   status: z.enum(Object.values(MILESTONE_STATUS)).optional(),
   deliverables: z.array(z.string().trim().max(150)).optional(),
   progressPercent: z.coerce.number().min(0).max(100).optional(),
+});
+
+/* Baseline & Closure */
+export const freezeBaselineSchema = z.object({
+  notes: text(500).optional().default(''),
+  rebaseline: z.boolean().optional().default(false),
+});
+
+export const closeProjectSchema = z.object({
+  actualEndDate: dateField.optional(),
+  forceClose: z.boolean().optional().default(false),
+  closureChecklist: z
+    .object({
+      finalInspectionCompleted: z.boolean().optional(),
+      punchListCleared: z.boolean().optional(),
+      asBuiltSubmitted: z.boolean().optional(),
+      finalAccountsSettled: z.boolean().optional(),
+      clientHandoverCompleted: z.boolean().optional(),
+      warrantyMonths: z.coerce.number().int().min(0).max(120).optional(),
+      remarks: text(1000).optional(),
+    })
+    .optional()
+    .default({}),
+});
+
+/* Risks */
+export const riskParams = z.object({ id: objectId, riskId: objectId });
+
+export const listRisksQuery = z.object({
+  status: z.enum(Object.values(RISK_STATUS)).optional(),
+  category: z.enum(Object.values(RISK_CATEGORY)).optional(),
+  severity: z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  q: text(100).optional(),
+});
+
+export const createRiskSchema = z.object({
+  title: z.string().trim().min(1, 'Enter risk title').max(160),
+  description: text(2000).optional().default(''),
+  category: z.enum(Object.values(RISK_CATEGORY)).optional().default(RISK_CATEGORY.TECHNICAL),
+  probability: z.enum(Object.values(RISK_LEVEL)).optional().default(RISK_LEVEL.MEDIUM),
+  impact: z.enum(Object.values(RISK_LEVEL)).optional().default(RISK_LEVEL.MEDIUM),
+  mitigationPlan: text(2000).optional().default(''),
+  owner: nullableId.optional(),
+  dueDate: dateField.optional(),
+  status: z.enum(Object.values(RISK_STATUS)).optional().default(RISK_STATUS.OPEN),
+});
+
+export const updateRiskSchema = createRiskSchema.partial();
+
+/* Change Orders & Variation Orders */
+export const changeOrderParams = z.object({ id: objectId, changeId: objectId });
+
+export const listChangeOrdersQuery = z.object({
+  status: z.enum(Object.values(APPROVAL_STATUS)).optional(),
+  type: z.enum(Object.values(CHANGE_ORDER_TYPE)).optional(),
+  q: text(100).optional(),
+});
+
+export const createChangeOrderSchema = z.object({
+  title: z.string().trim().min(1, 'Enter change order title').max(160),
+  description: text(2000).optional().default(''),
+  type: z.enum(Object.values(CHANGE_ORDER_TYPE)).optional().default(CHANGE_ORDER_TYPE.COMBINED),
+  costImpact: z.coerce.number().min(-1e12).max(1e12).optional().default(0),
+  scheduleImpactDays: z.coerce.number().int().min(-3650).max(3650).optional().default(0),
+  reason: text(1000).optional().default(''),
+  clientApprovalRequired: z.boolean().optional().default(false),
+  clientApproved: z.boolean().optional().default(false),
+});
+
+export const updateChangeOrderSchema = createChangeOrderSchema.partial();
+
+export const transitionChangeOrderSchema = z.object({
+  status: z.enum(Object.values(APPROVAL_STATUS)),
+  comment: text(1000).optional(),
+  clientApproved: z.boolean().optional(),
 });

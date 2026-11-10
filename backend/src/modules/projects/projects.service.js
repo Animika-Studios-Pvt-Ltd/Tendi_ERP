@@ -34,6 +34,30 @@ export function toProjectDto(doc) {
     plannedEndDate: project.plannedEndDate ?? null,
     actualEndDate: project.actualEndDate ?? null,
     progressPercent: project.progressPercent ?? 0,
+    baseline: project.baseline?.lockedAt
+      ? {
+          startDate: project.baseline.startDate ?? null,
+          plannedEndDate: project.baseline.plannedEndDate ?? null,
+          contractValue: project.baseline.contractValue ?? 0,
+          progressPercent: project.baseline.progressPercent ?? 0,
+          lockedAt: project.baseline.lockedAt,
+          lockedBy: toPerson(project.baseline.lockedBy) || (project.baseline.lockedBy ? String(project.baseline.lockedBy) : null),
+          notes: project.baseline.notes ?? '',
+        }
+      : null,
+    closureChecklist: project.closureChecklist
+      ? {
+          finalInspectionCompleted: Boolean(project.closureChecklist.finalInspectionCompleted),
+          punchListCleared: Boolean(project.closureChecklist.punchListCleared),
+          asBuiltSubmitted: Boolean(project.closureChecklist.asBuiltSubmitted),
+          finalAccountsSettled: Boolean(project.closureChecklist.finalAccountsSettled),
+          clientHandoverCompleted: Boolean(project.closureChecklist.clientHandoverCompleted),
+          warrantyMonths: project.closureChecklist.warrantyMonths ?? 12,
+          remarks: project.closureChecklist.remarks ?? '',
+          closedAt: project.closureChecklist.closedAt ?? null,
+          closedBy: toPerson(project.closureChecklist.closedBy) || (project.closureChecklist.closedBy ? String(project.closureChecklist.closedBy) : null),
+        }
+      : null,
     projectManager: toPerson(project.projectManager),
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
@@ -59,7 +83,10 @@ export async function listProjects(user, query) {
 
 /** Out-of-scope and missing projects are indistinguishable (404). */
 export async function getAccessibleProject(user, id, { lean = false } = {}) {
-  let query = Project.findOne(scoped(user, { _id: id })).populate('projectManager', PERSON_FIELDS);
+  let query = Project.findOne(scoped(user, { _id: id }))
+    .populate('projectManager', PERSON_FIELDS)
+    .populate('baseline.lockedBy', PERSON_FIELDS)
+    .populate('closureChecklist.closedBy', PERSON_FIELDS);
   if (lean) query = query.lean();
   const project = await query;
   if (!project) throw notFound();

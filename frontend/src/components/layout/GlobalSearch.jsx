@@ -1,14 +1,15 @@
-import { CornerDownLeft, Search } from 'lucide-react';
+import { CornerDownLeft, FileSearch, Search } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useClickOutside } from '@/hooks/useClickOutside';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { ROUTE_INDEX } from '@/modules/registry';
+import { searchService } from '@/services/search.service';
 import { cn } from '@/utils/cn';
 
 /**
- * Quick navigation across modules and pages the user can access (Ctrl/⌘ + K).
- * Record search (projects, POs, vendors…) plugs in here once those APIs exist.
+ * Quick navigation across modules, pages and live ERP records (Ctrl/⌘ + K).
  */
 export default function GlobalSearch() {
   const { can } = useAuth();
@@ -16,6 +17,9 @@ export default function GlobalSearch() {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [records, setRecords] = useState([]);
+  const [loadingRecords, setLoadingRecords] = useState(false);
+  const debouncedQuery = useDebouncedValue(query.trim(), 250);
   const containerRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -34,16 +38,63 @@ export default function GlobalSearch() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  const results = useMemo(() => {
+  useEffect(() => {
+    if (debouncedQuery.length < 2) {
+      setRecords([]);
+      setLoadingRecords(false);
+      return;
+    }
+    let cancelled = false;
+    setLoadingRecords(true);
+    searchService
+      .search(debouncedQuery)
+      .then((res) => {
+        if (!cancelled) setRecords(res.data || []);
+      })
+      .catch(() => {
+        if (!cancelled) setRecords([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingRecords(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery]);
+
+  const pageResults = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) return [];
     return ROUTE_INDEX.filter((route) => !route.hidden && can(route.module.permission, 'read'))
       .filter((route) => `${route.title} ${route.module.title}`.toLowerCase().includes(term))
-      .slice(0, 8);
+      .slice(0, 5)
+      .map((route) => ({
+        kind: 'page',
+        key: `page:${route.path}`,
+        path: route.path,
+        title: route.title,
+        subtitle: route.section ? route.module.title : 'Module',
+        icon: route.module.icon,
+      }));
   }, [query, can]);
 
-  const go = (route) => {
-    navigate(route.path);
+  const recordResults = useMemo(
+    () =>
+      records.map((rec) => ({
+        kind: 'record',
+        key: `rec:${rec.type}:${rec.id}`,
+        path: rec.link,
+        title: rec.title,
+        subtitle: `${rec.type} · ${rec.subtitle}`,
+        icon: FileSearch,
+      })),
+    [records],
+  );
+
+  const results = useMemo(() => [...pageResults, ...recordResults], [pageResults, recordResults]);
+
+  const go = (item) => {
+    navigate(item.path);
     setQuery('');
     setOpen(false);
     inputRef.current?.blur();
@@ -52,7 +103,7 @@ export default function GlobalSearch() {
   const onKeyDown = (event) => {
     if (event.key === 'ArrowDown') {
       event.preventDefault();
-      setActiveIndex((i) => Math.min(i + 1, results.length - 1));
+      setActiveIndex((i) => Math.min(i + 1, Math.max(0, results.length - 1)));
     } else if (event.key === 'ArrowUp') {
       event.preventDefault();
       setActiveIndex((i) => Math.max(i - 1, 0));
@@ -70,8 +121,8 @@ export default function GlobalSearch() {
         role="combobox"
         aria-expanded={open && results.length > 0}
         aria-controls="global-search-results"
-        aria-label="Search modules and pages"
-        placeholder="Search modules and pages"
+        aria-label="Search modules, pages and records"
+        placeholder="Search modules, projects, POs, sites..."
         value={query}
         onChange={(event) => {
           setQuery(event.target.value);
@@ -87,25 +138,27 @@ export default function GlobalSearch() {
       </kbd>
 
       {open && query.trim() && (
-        <div className="absolute top-full right-0 left-0 z-50 mt-2 overflow-hidden rounded-lg border border-line bg-surface shadow-raised">
+        <div className="absolute top-full right-0 left-0 z-50 mt-2 max-h-96 overflow-y-auto rounded-lg border border-line bg-surface shadow-raised">
           {results.length === 0 ? (
-            <p className="px-4 py-3 text-sm text-muted">No pages match &ldquo;{query}&rdquo;.</p>
+            <p className="px-4 py-3 text-sm text-muted">
+              {loadingRecords ? 'Searching ERP records...' : `No pages or records match "${query}".`}
+            </p>
           ) : (
             <ul id="global-search-results" role="listbox" className="py-1">
-              {results.map((route, index) => {
-                const Icon = route.module.icon;
+              {results.map((item, index) => {
+                const Icon = item.icon;
                 return (
-                  <li key={route.path} role="option" aria-selected={index === activeIndex}>
+                  <li key={item.key} role="option" aria-selected={index === activeIndex}>
                     <button
                       type="button"
                       onMouseEnter={() => setActiveIndex(index)}
-                      onClick={() => go(route)}
+                      onClick={() => go(item)}
                       className={cn('flex w-full items-center gap-3 px-3 py-2 text-left', index === activeIndex && 'bg-navy-50')}
                     >
                       <Icon size={16} className="shrink-0 text-navy-500" aria-hidden="true" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm text-ink">{route.title}</span>
-                        {route.section && <span className="block truncate text-xs text-muted">{route.module.title}</span>}
+                        <span className="block truncate text-sm text-ink">{item.title}</span>
+                        <span className="block truncate text-xs text-muted">{item.subtitle}</span>
                       </span>
                       {index === activeIndex && <CornerDownLeft size={14} className="text-subtle" aria-hidden="true" />}
                     </button>

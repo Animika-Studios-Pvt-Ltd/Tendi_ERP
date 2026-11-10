@@ -1,8 +1,13 @@
+import { MODULES } from '../../config/rbac.js';
 import { APPROVAL_STATUS } from '../../models/plugins/approvalWorkflow.js';
 import { DailyProgressReport } from '../../models/DailyProgressReport.js';
+import { NOTIFICATION_TYPES } from '../../models/Notification.js';
 import { Project } from '../../models/Project.js';
 import { Site, SITE_STATUS } from '../../models/Site.js';
 import { User, USER_STATUS } from '../../models/User.js';
+import { executeApprovalTransition } from '../../services/approval.service.js';
+import { notifyProjectApprovers, notifyUsers } from '../../services/notification.service.js';
+import { nextSequenceNumber } from '../../services/sequence.service.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { paginate, parsePagination } from '../../utils/pagination.js';
 import { buildProjectScope, canAccessProject } from '../../utils/scope.js';
@@ -167,6 +172,10 @@ export async function createSite(user, input) {
     updatedBy: user._id,
   });
 
+  if (input.siteEngineer) {
+    await User.updateOne({ _id: input.siteEngineer }, { $addToSet: { assignedProjects: project._id } });
+  }
+
   await site.populate([
     { path: 'project', select: PROJECT_SELECT },
     { path: 'siteEngineer', select: PERSON_SELECT },
@@ -189,6 +198,10 @@ export async function updateSite(user, id, input) {
   Object.assign(site, input);
   site.updatedBy = user._id;
   await site.save();
+
+  if (input.siteEngineer) {
+    await User.updateOne({ _id: input.siteEngineer }, { $addToSet: { assignedProjects: site.project } });
+  }
 
   await site.populate([
     { path: 'project', select: PROJECT_SELECT },
@@ -274,17 +287,13 @@ export async function createDpr(user, input) {
     throw ApiError.badRequest('Selected site does not belong to this project');
   }
 
-  // Generate unique report number: DPR-<PROJECT_CODE>-<YYYYMMDD>-<COUNT+1>
   const dateObj = new Date(input.reportDate);
   const dateStr = dateObj.toISOString().slice(0, 10).replace(/-/g, '');
-  const dayCount = await DailyProgressReport.countDocuments({
-    project: project._id,
-    reportDate: {
-      $gte: new Date(`${input.reportDate.slice(0, 10)}T00:00:00.000Z`),
-      $lte: new Date(`${input.reportDate.slice(0, 10)}T23:59:59.999Z`),
-    },
+  const reportNumber = await nextSequenceNumber('dpr', {
+    scopeKey: `${project._id}:${dateStr}`,
+    contextCode: `${project.code}-${dateStr}`,
+    minPadding: 3,
   });
-  const reportNumber = `DPR-${project.code}-${dateStr}-${String(dayCount + 1).padStart(3, '0')}`;
 
   const dpr = await DailyProgressReport.create({
     ...input,
@@ -308,8 +317,10 @@ export async function updateDpr(user, id, input) {
   const dpr = await DailyProgressReport.findOne(scoped(user, { _id: id }));
   if (!dpr) throw ApiError.notFound('Daily progress report not found');
 
-  if (![APPROVAL_STATUS.DRAFT, APPROVAL_STATUS.REJECTED].includes(dpr.status)) {
-    throw ApiError.badRequest(`Cannot edit report while status is "${dpr.status}". Only draft or rejected reports can be edited.`);
+  if (![APPROVAL_STATUS.DRAFT, APPROVAL_STATUS.REJECTED, APPROVAL_STATUS.RETURNED].includes(dpr.status)) {
+    throw ApiError.badRequest(
+      `Cannot edit report while status is "${dpr.status}". Only draft, returned or rejected reports can be edited.`,
+    );
   }
 
   Object.assign(dpr, input);
@@ -330,9 +341,42 @@ export async function transitionDpr(user, id, { status: targetStatus, comment })
   const dpr = await DailyProgressReport.findOne(scoped(user, { _id: id }));
   if (!dpr) throw ApiError.notFound('Daily progress report not found');
 
-  dpr.transitionTo(targetStatus, user._id, comment);
+  await executeApprovalTransition(user, dpr, {
+    module: MODULES.SITES,
+    targetStatus,
+    comment,
+  });
   dpr.updatedBy = user._id;
   await dpr.save();
+
+  if (targetStatus === APPROVAL_STATUS.SUBMITTED) {
+    await notifyProjectApprovers({
+      projectId: dpr.project,
+      module: MODULES.SITES,
+      excludeUserId: user._id,
+      title: `DPR ${dpr.reportNumber} awaiting approval`,
+      message: 'A daily progress report was submitted for review.',
+      entityType: 'DailyProgressReport',
+      entityId: dpr._id,
+      link: `/sites/daily-progress/${dpr._id}`,
+      createdBy: user._id,
+    });
+  } else if ([APPROVAL_STATUS.APPROVED, APPROVAL_STATUS.REJECTED, APPROVAL_STATUS.RETURNED].includes(targetStatus)) {
+    const recipient = dpr.submittedBy || dpr.createdBy;
+    if (recipient && String(recipient) !== String(user._id)) {
+      await notifyUsers([recipient], {
+        type: NOTIFICATION_TYPES.APPROVAL_DECIDED,
+        title: `DPR ${dpr.reportNumber} ${targetStatus}`,
+        message: comment || `Your progress report was marked as ${targetStatus}.`,
+        module: MODULES.SITES,
+        entityType: 'DailyProgressReport',
+        entityId: dpr._id,
+        project: dpr.project,
+        link: `/sites/daily-progress/${dpr._id}`,
+        createdBy: user._id,
+      });
+    }
+  }
 
   await dpr.populate([
     { path: 'project', select: PROJECT_SELECT },

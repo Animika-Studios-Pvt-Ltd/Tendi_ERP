@@ -7,6 +7,7 @@ const ProjectFormPage = lazy(() => import('./pages/ProjectFormPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
 const TasksListPage = lazy(() => import('./pages/TasksListPage'));
 const MilestonesListPage = lazy(() => import('./pages/MilestonesListPage'));
+const ProjectGanttPage = lazy(() => import('./pages/ProjectGanttPage'));
 
 export default {
   key: MODULES.PROJECTS,
@@ -22,6 +23,7 @@ export default {
     { path: '', title: 'All projects' },
     { path: 'tasks', title: 'Tasks', element: TasksListPage },
     { path: 'milestones', title: 'Milestones', element: MilestonesListPage },
+    { path: 'schedule', title: 'Schedule & Gantt', element: ProjectGanttPage },
   ],
   routes: [
     { path: 'new', title: 'New project', element: ProjectFormPage, action: ACTIONS.CREATE },

@@ -13,6 +13,15 @@ export const listUsersQuery = z.object({
   sort: z.string().trim().optional(),
 });
 
+export const listAuditLogsQuery = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(25),
+  module: z.enum([...MODULE_LIST, 'auth', 'system']).optional(),
+  action: z.string().trim().max(80).optional(),
+  project: z.string().regex(objectIdRegex, 'Invalid project ID format').optional(),
+  q: z.string().trim().max(120).optional(),
+});
+
 export const userIdParams = z.object({
   id: z.string().regex(objectIdRegex, 'Invalid user ID format'),
 });

@@ -47,6 +47,28 @@ const projectSchema = new Schema(
     actualEndDate: Date,
     progressPercent: { type: Number, min: 0, max: 100, default: 0 },
 
+    baseline: {
+      startDate: Date,
+      plannedEndDate: Date,
+      contractValue: { type: Number, min: 0 },
+      progressPercent: { type: Number, min: 0, max: 100 },
+      lockedAt: Date,
+      lockedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      notes: { type: String, trim: true, maxlength: 500, default: '' },
+    },
+
+    closureChecklist: {
+      finalInspectionCompleted: { type: Boolean, default: false },
+      punchListCleared: { type: Boolean, default: false },
+      asBuiltSubmitted: { type: Boolean, default: false },
+      finalAccountsSettled: { type: Boolean, default: false },
+      clientHandoverCompleted: { type: Boolean, default: false },
+      warrantyMonths: { type: Number, min: 0, max: 120, default: 12 },
+      remarks: { type: String, trim: true, maxlength: 1000, default: '' },
+      closedBy: { type: Schema.Types.ObjectId, ref: 'User' },
+      closedAt: Date,
+    },
+
     projectManager: { type: Schema.Types.ObjectId, ref: 'User', index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },

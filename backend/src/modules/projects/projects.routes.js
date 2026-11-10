@@ -6,23 +6,34 @@ import * as controller from './projects.controller.js';
 import * as taskController from './tasks.controller.js';
 import {
   addTeamMemberSchema,
+  changeOrderParams,
+  closeProjectSchema,
+  createChangeOrderSchema,
   createMilestoneSchema,
   createProjectSchema,
+  createRiskSchema,
   createTaskSchema,
+  freezeBaselineSchema,
+  listChangeOrdersQuery,
   listMilestonesQuery,
   listProjectsQuery,
+  listRisksQuery,
   listTasksQuery,
   milestoneIdParams,
   projectIdParams,
+  riskParams,
   taskIdParams,
   teamMemberParams,
+  transitionChangeOrderSchema,
+  updateChangeOrderSchema,
   updateMilestoneSchema,
   updateProjectSchema,
+  updateRiskSchema,
   updateTaskSchema,
   userLookupQuery,
 } from './projects.validator.js';
 
-const { CREATE, READ, UPDATE, DELETE } = ACTIONS;
+const { CREATE, READ, UPDATE, DELETE, APPROVE, REJECT } = ACTIONS;
 const can = (action) => authorize(MODULES.PROJECTS, action);
 
 const router = Router();
@@ -54,5 +65,31 @@ router.patch('/:id', can(UPDATE), validate({ params: projectIdParams, body: upda
 router.get('/:id/team', can(READ), validate({ params: projectIdParams }), controller.team);
 router.post('/:id/team', can(UPDATE), validate({ params: projectIdParams, body: addTeamMemberSchema }), controller.addMember);
 router.delete('/:id/team/:userId', can(UPDATE), validate({ params: teamMemberParams }), controller.removeMember);
+
+/* WBS & Gantt */
+router.get('/:id/wbs', can(READ), validate({ params: projectIdParams }), taskController.getWbs);
+router.get('/:id/gantt', can(READ), validate({ params: projectIdParams }), taskController.getGantt);
+
+/* Baseline & Closure */
+router.post('/:id/baseline', can(UPDATE), validate({ params: projectIdParams, body: freezeBaselineSchema }), controller.freezeBaseline);
+router.get('/:id/readiness', can(READ), validate({ params: projectIdParams }), controller.getReadiness);
+router.post('/:id/close', can(UPDATE), validate({ params: projectIdParams, body: closeProjectSchema }), controller.closeProject);
+
+/* Risk Register */
+router.get('/:id/risks', can(READ), validate({ params: projectIdParams, query: listRisksQuery }), controller.listRisks);
+router.post('/:id/risks', can(CREATE), validate({ params: projectIdParams, body: createRiskSchema }), controller.createRisk);
+router.patch('/:id/risks/:riskId', can(UPDATE), validate({ params: riskParams, body: updateRiskSchema }), controller.updateRisk);
+router.delete('/:id/risks/:riskId', can(DELETE), validate({ params: riskParams }), controller.deleteRisk);
+
+/* Change Orders & Variation Orders */
+router.get('/:id/change-orders', can(READ), validate({ params: projectIdParams, query: listChangeOrdersQuery }), controller.listChangeOrders);
+router.post('/:id/change-orders', can(CREATE), validate({ params: projectIdParams, body: createChangeOrderSchema }), controller.createChangeOrder);
+router.patch('/:id/change-orders/:changeId', can(UPDATE), validate({ params: changeOrderParams, body: updateChangeOrderSchema }), controller.updateChangeOrder);
+router.post(
+  '/:id/change-orders/:changeId/transition',
+  authorize(MODULES.PROJECTS, CREATE, UPDATE, APPROVE, REJECT),
+  validate({ params: changeOrderParams, body: transitionChangeOrderSchema }),
+  controller.transitionChangeOrder,
+);
 
 export default router;

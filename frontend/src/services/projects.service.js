@@ -26,4 +26,24 @@ export const projectsService = {
   createMilestone: (data) => api.post('/projects/milestones', data).then(unwrap),
   updateMilestone: (id, data) => api.patch(`/projects/milestones/${id}`, data).then(unwrap),
   deleteMilestone: (id) => api.delete(`/projects/milestones/${id}`).then(unwrap),
+
+  /* WBS, Gantt, Baseline & Closure */
+  getWbs: (projectId) => api.get(`/projects/${projectId}/wbs`).then(unwrap),
+  getGantt: (projectId) => api.get(`/projects/${projectId}/gantt`).then(unwrap),
+  freezeBaseline: (projectId, data) => api.post(`/projects/${projectId}/baseline`, data).then(unwrap),
+  getReadiness: (projectId) => api.get(`/projects/${projectId}/readiness`).then(unwrap),
+  closeProject: (projectId, data) => api.post(`/projects/${projectId}/close`, data).then(unwrap),
+
+  /* Risks */
+  listRisks: (projectId, params) => api.get(`/projects/${projectId}/risks`, { params }).then(unwrap),
+  createRisk: (projectId, data) => api.post(`/projects/${projectId}/risks`, data).then(unwrap),
+  updateRisk: (projectId, riskId, data) => api.patch(`/projects/${projectId}/risks/${riskId}`, data).then(unwrap),
+  deleteRisk: (projectId, riskId) => api.delete(`/projects/${projectId}/risks/${riskId}`).then(unwrap),
+
+  /* Change Orders */
+  listChangeOrders: (projectId, params) => api.get(`/projects/${projectId}/change-orders`, { params }).then(unwrap),
+  createChangeOrder: (projectId, data) => api.post(`/projects/${projectId}/change-orders`, data).then(unwrap),
+  updateChangeOrder: (projectId, changeId, data) => api.patch(`/projects/${projectId}/change-orders/${changeId}`, data).then(unwrap),
+  transitionChangeOrder: (projectId, changeId, data) =>
+    api.post(`/projects/${projectId}/change-orders/${changeId}/transition`, data).then(unwrap),
 };

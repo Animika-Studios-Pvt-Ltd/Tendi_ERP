@@ -27,3 +27,34 @@ export const MILESTONE_STATUS_OPTIONS = [
   { value: 'achieved', label: 'Achieved' },
   { value: 'delayed', label: 'Delayed' },
 ];
+
+export const RISK_CATEGORY_OPTIONS = [
+  { value: 'technical', label: 'Technical' },
+  { value: 'schedule', label: 'Schedule' },
+  { value: 'financial', label: 'Financial' },
+  { value: 'safety', label: 'Safety' },
+  { value: 'regulatory', label: 'Regulatory' },
+  { value: 'supply_chain', label: 'Supply chain' },
+  { value: 'weather', label: 'Weather' },
+  { value: 'other', label: 'Other' },
+];
+
+export const RISK_LEVEL_OPTIONS = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+];
+
+export const RISK_STATUS_OPTIONS = [
+  { value: 'open', label: 'Open' },
+  { value: 'mitigated', label: 'Mitigated' },
+  { value: 'occurred', label: 'Occurred' },
+  { value: 'closed', label: 'Closed' },
+];
+
+export const CHANGE_ORDER_TYPE_OPTIONS = [
+  { value: 'combined', label: 'Combined (Cost + Schedule)' },
+  { value: 'scope', label: 'Scope Change' },
+  { value: 'cost', label: 'Cost Variation' },
+  { value: 'schedule', label: 'Schedule Extension' },
+];

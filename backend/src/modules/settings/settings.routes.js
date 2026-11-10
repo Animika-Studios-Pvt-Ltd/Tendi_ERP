@@ -11,6 +11,7 @@ const can = (action) => authorize(MODULES.SETTINGS, action);
 const router = Router();
 router.use(authenticate);
 
+router.get('/master-data', controller.getMasterData);
 router.get('/', can(READ), controller.get);
 router.patch('/', can(UPDATE), validate({ body: updateSettingsSchema }), controller.update);
 

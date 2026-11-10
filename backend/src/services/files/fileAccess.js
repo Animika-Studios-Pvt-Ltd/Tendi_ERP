@@ -30,13 +30,16 @@ function isPortalOwner(user, file) {
   return sameId(file.owner?.contractor, user.contractor) || sameId(file.owner?.customer, user.customer);
 }
 
+const canUser = (user, module, action) =>
+  typeof user?.can === 'function' ? user.can(module, action) : Boolean(user?.role?.can?.(module, action));
+
 /**
  * Throws unless `user` may perform `action` on `file` in `module`.
  * Out-of-scope records are reported as 404 so identifiers cannot be probed (IDOR/BOLA).
  */
 export function assertFileAccess(user, file, { module = MODULES.DOCUMENTS, action = 'read' } = {}) {
   if (!user?.role) throw ApiError.unauthorized();
-  if (!user.role.can(module, action)) throw ApiError.forbidden(`Your role cannot ${action} in ${module}`);
+  if (!canUser(user, module, action)) throw ApiError.forbidden(`Your role cannot ${action} in ${module}`);
   if (!file) throw notFound();
 
   const scope = user.role.dataScope;
@@ -53,7 +56,7 @@ export function assertFileAccess(user, file, { module = MODULES.DOCUMENTS, actio
 /** Upload target check: the user must be able to create in `module` within `projectId`. */
 export function assertProjectWriteAccess(user, projectId, { module = MODULES.DOCUMENTS } = {}) {
   if (!user?.role) throw ApiError.unauthorized();
-  if (!user.role.can(module, 'create')) throw ApiError.forbidden(`Your role cannot create in ${module}`);
+  if (!canUser(user, module, 'create')) throw ApiError.forbidden(`Your role cannot create in ${module}`);
   if (projectId == null) return;
   if (!mongoose.isValidObjectId(projectId) || !canAccessProject(user, projectId)) {
     throw ApiError.notFound('Project not found');
