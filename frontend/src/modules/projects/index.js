@@ -5,6 +5,8 @@ import { ACTIONS, MODULES } from '@/constants/permissions';
 const ProjectsListPage = lazy(() => import('./pages/ProjectsListPage'));
 const ProjectFormPage = lazy(() => import('./pages/ProjectFormPage'));
 const ProjectDetailPage = lazy(() => import('./pages/ProjectDetailPage'));
+const TasksListPage = lazy(() => import('./pages/TasksListPage'));
+const MilestonesListPage = lazy(() => import('./pages/MilestonesListPage'));
 
 export default {
   key: MODULES.PROJECTS,
@@ -18,8 +20,8 @@ export default {
   element: ProjectsListPage,
   sections: [
     { path: '', title: 'All projects' },
-    { path: 'tasks', title: 'Tasks' },
-    { path: 'milestones', title: 'Milestones' },
+    { path: 'tasks', title: 'Tasks', element: TasksListPage },
+    { path: 'milestones', title: 'Milestones', element: MilestonesListPage },
   ],
   routes: [
     { path: 'new', title: 'New project', element: ProjectFormPage, action: ACTIONS.CREATE },

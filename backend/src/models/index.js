@@ -4,4 +4,7 @@ export { AuditLog } from './AuditLog.js';
 export { Project, PROJECT_STATUS } from './Project.js';
 export { Site, SITE_STATUS } from './Site.js';
 export { DailyProgressReport, WEATHER_CONDITIONS, WEATHER_IMPACTS } from './DailyProgressReport.js';
+export { Task, TASK_STATUS, TASK_PRIORITY } from './Task.js';
+export { Milestone, MILESTONE_STATUS } from './Milestone.js';
+export { CompanySettings } from './CompanySettings.js';
 export { approvalWorkflowPlugin, APPROVAL_STATUS } from './plugins/approvalWorkflow.js';

@@ -1,6 +1,8 @@
 import mongoose from 'mongoose';
 import { z } from 'zod';
+import { MILESTONE_STATUS } from '../../models/Milestone.js';
 import { PROJECT_STATUS } from '../../models/Project.js';
+import { TASK_PRIORITY, TASK_STATUS } from '../../models/Task.js';
 
 const text = (max) => z.string().trim().max(max);
 const objectId = z.string().refine((value) => /^[a-f0-9]{24}$/i.test(value) && mongoose.isValidObjectId(value), 'Invalid id');
@@ -94,4 +96,80 @@ export const addTeamMemberSchema = z
 export const userLookupQuery = z.object({
   q: text(100).optional(),
   forProjectManager: z.union([z.boolean(), z.enum(['true', 'false'])]).optional(),
+});
+
+/* Tasks */
+export const taskIdParams = z.object({ id: objectId });
+
+export const listTasksQuery = z.object({
+  q: text(100).optional(),
+  project: objectId.optional(),
+  milestone: objectId.optional(),
+  assignedTo: objectId.optional(),
+  status: z.enum(Object.values(TASK_STATUS)).optional(),
+  priority: z.enum(Object.values(TASK_PRIORITY)).optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  sort: z.string().max(60).optional(),
+});
+
+export const createTaskSchema = z.object({
+  title: z.string().trim().min(1, 'Enter task title').max(150),
+  code: z.string().trim().toUpperCase().optional(),
+  project: objectId,
+  description: text(2000).optional().default(''),
+  milestone: z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null).optional(),
+  assignedTo: z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null).optional(),
+  status: z.enum(Object.values(TASK_STATUS)).optional().default(TASK_STATUS.TODO),
+  priority: z.enum(Object.values(TASK_PRIORITY)).optional().default(TASK_PRIORITY.MEDIUM),
+  startDate: dateField.optional(),
+  dueDate: dateField.optional(),
+  progressPercent: z.coerce.number().min(0).max(100).optional().default(0),
+  dependencies: z.array(objectId).optional().default([]),
+});
+
+export const updateTaskSchema = z.object({
+  title: z.string().trim().min(1).max(150).optional(),
+  description: text(2000).optional(),
+  milestone: z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null).optional(),
+  assignedTo: z.union([objectId, z.literal(''), z.null()]).transform((v) => v || null).optional(),
+  status: z.enum(Object.values(TASK_STATUS)).optional(),
+  priority: z.enum(Object.values(TASK_PRIORITY)).optional(),
+  startDate: dateField.optional(),
+  dueDate: dateField.optional(),
+  progressPercent: z.coerce.number().min(0).max(100).optional(),
+  dependencies: z.array(objectId).optional(),
+});
+
+/* Milestones */
+export const milestoneIdParams = z.object({ id: objectId });
+
+export const listMilestonesQuery = z.object({
+  q: text(100).optional(),
+  project: objectId.optional(),
+  status: z.enum(Object.values(MILESTONE_STATUS)).optional(),
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+  sort: z.string().max(60).optional(),
+});
+
+export const createMilestoneSchema = z.object({
+  title: z.string().trim().min(1, 'Enter milestone title').max(150),
+  project: objectId,
+  description: text(1000).optional().default(''),
+  targetDate: z.string().min(1, 'Enter target date'),
+  actualDate: dateField.optional(),
+  status: z.enum(Object.values(MILESTONE_STATUS)).optional().default(MILESTONE_STATUS.PENDING),
+  deliverables: z.array(z.string().trim().max(150)).optional().default([]),
+  progressPercent: z.coerce.number().min(0).max(100).optional().default(0),
+});
+
+export const updateMilestoneSchema = z.object({
+  title: z.string().trim().min(1).max(150).optional(),
+  description: text(1000).optional(),
+  targetDate: dateField.optional(),
+  actualDate: dateField.optional(),
+  status: z.enum(Object.values(MILESTONE_STATUS)).optional(),
+  deliverables: z.array(z.string().trim().max(150)).optional(),
+  progressPercent: z.coerce.number().min(0).max(100).optional(),
 });

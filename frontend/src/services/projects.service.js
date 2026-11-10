@@ -12,4 +12,18 @@ export const projectsService = {
     const params = typeof param === 'string' ? (param ? { q: param } : undefined) : param;
     return api.get('/projects/lookup/users', { params }).then(unwrap);
   },
+
+  /* Tasks */
+  listTasks: (params) => api.get('/projects/tasks', { params }).then(unwrap),
+  getTask: (id) => api.get(`/projects/tasks/${id}`).then(unwrap),
+  createTask: (data) => api.post('/projects/tasks', data).then(unwrap),
+  updateTask: (id, data) => api.patch(`/projects/tasks/${id}`, data).then(unwrap),
+  deleteTask: (id) => api.delete(`/projects/tasks/${id}`).then(unwrap),
+
+  /* Milestones */
+  listMilestones: (params) => api.get('/projects/milestones', { params }).then(unwrap),
+  getMilestone: (id) => api.get(`/projects/milestones/${id}`).then(unwrap),
+  createMilestone: (data) => api.post('/projects/milestones', data).then(unwrap),
+  updateMilestone: (id, data) => api.patch(`/projects/milestones/${id}`, data).then(unwrap),
+  deleteMilestone: (id) => api.delete(`/projects/milestones/${id}`).then(unwrap),
 };
