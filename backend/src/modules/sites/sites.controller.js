@@ -100,3 +100,55 @@ export async function transitionDpr(req, res) {
   sendSuccess(res, dpr, { message: `Report transitioned to ${dpr.status}` });
 }
 
+export async function uploadDprPhotos(req, res) {
+  const dpr = await service.addDprPhotos(req.user, req.validated.params.id, req.files, req.body?.caption);
+  audit(req, 'dpr.photos_upload', {
+    entityType: 'DailyProgressReport',
+    entityId: dpr.id,
+    project: dpr.project?.id,
+    summary: `Uploaded site photos to ${dpr.reportNumber}`,
+  });
+  sendSuccess(res, dpr, { status: 201, message: 'Site photos uploaded' });
+}
+
+export async function downloadDprPhoto(req, res) {
+  const data = await service.getDprPhotoDownloadUrl(req.user, req.validated.params.id, req.params.photoId);
+  res.set('Cache-Control', 'no-store');
+  sendSuccess(res, data);
+}
+
+export async function postDprConsumption(req, res) {
+  const result = await service.postDprConsumption(req.user, req.validated.params.id);
+  audit(req, 'dpr.post_consumption', {
+    entityType: 'DailyProgressReport',
+    entityId: result.dprId,
+    summary: `Posted ${result.postedCount} material issue(s) from ${result.reportNumber}`,
+  });
+  sendSuccess(res, result, { message: `Posted ${result.postedCount} consumption entries to Inventory` });
+}
+
+export async function listInstructions(req, res) {
+  sendSuccess(res, await service.listSiteInstructions(req.user, req.validated.query));
+}
+
+export async function createInstruction(req, res) {
+  const si = await service.createSiteInstruction(req.user, req.body);
+  audit(req, 'site_instruction.create', {
+    entityType: 'SiteInstruction',
+    entityId: si.id,
+    project: si.project?._id || si.project,
+    summary: `Issued Site Instruction ${si.siNumber}`,
+  });
+  sendSuccess(res, si, { status: 201, message: 'Site instruction issued' });
+}
+
+export async function updateInstruction(req, res) {
+  const si = await service.updateSiteInstruction(req.user, req.validated.params.id, req.body);
+  audit(req, 'site_instruction.update', {
+    entityType: 'SiteInstruction',
+    entityId: si.id,
+    summary: `Updated Site Instruction ${si.siNumber}`,
+  });
+  sendSuccess(res, si, { message: 'Site instruction updated' });
+}
+

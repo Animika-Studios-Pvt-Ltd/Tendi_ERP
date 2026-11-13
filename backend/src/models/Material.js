@@ -16,6 +16,8 @@ const materialSchema = new Schema(
     category: { type: String, required: true, trim: true, maxlength: 80, index: true },
     unit: { type: String, required: true, trim: true, maxlength: 30 },
     hsnCode: { type: String, trim: true, maxlength: 20, default: '' },
+    barcode: { type: String, trim: true, uppercase: true, sparse: true, unique: true },
+    gstPercent: { type: Number, min: 0, max: 50, default: 18 },
     standardRate: { type: Number, min: 0, default: 0 },
     reorderLevel: { type: Number, min: 0, default: 10 },
     description: { type: String, trim: true, maxlength: 500, default: '' },

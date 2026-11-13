@@ -7,6 +7,7 @@ const mrItemSchema = new Schema(
   {
     material: { type: Schema.Types.ObjectId, ref: 'Material', required: true },
     quantity: { type: Number, required: true, min: 0.01 },
+    orderedQuantity: { type: Number, min: 0, default: 0 },
     unit: { type: String, required: true, trim: true, maxlength: 30 },
     notes: { type: String, trim: true, maxlength: 300, default: '' },
   },

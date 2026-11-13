@@ -23,6 +23,7 @@ const inventoryTransactionSchema = new Schema(
     },
     project: { type: Schema.Types.ObjectId, ref: 'Project', required: true, index: true },
     site: { type: Schema.Types.ObjectId, ref: 'Site', index: true },
+    warehouse: { type: Schema.Types.ObjectId, ref: 'Warehouse', default: null, index: true },
     material: { type: Schema.Types.ObjectId, ref: 'Material', required: true, index: true },
     type: {
       type: String,
@@ -36,7 +37,7 @@ const inventoryTransactionSchema = new Schema(
     totalValue: { type: Number, min: 0, default: 0 },
     referenceType: {
       type: String,
-      enum: ['Manual', 'GoodsReceipt', 'DailyProgressReport', 'InterSiteTransfer', 'OpeningBalance'],
+      enum: ['Manual', 'GoodsReceipt', 'DailyProgressReport', 'InterSiteTransfer', 'OpeningBalance', 'StockVerification', 'PurchaseReturn'],
       default: 'Manual',
     },
     referenceId: { type: Schema.Types.ObjectId },

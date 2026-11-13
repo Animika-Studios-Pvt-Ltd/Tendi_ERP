@@ -1,17 +1,21 @@
 import { Router } from 'express';
 import { ACTIONS, MODULES } from '../../config/rbac.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
+import { createUpload, FILE_TYPES } from '../../middleware/upload.js';
 import { validate } from '../../middleware/validate.js';
 import * as controller from './sites.controller.js';
 import {
   createDprSchema,
+  createInstructionSchema,
   createSiteSchema,
   dprIdParams,
   listDprQuery,
+  listInstructionsQuery,
   listSitesQuery,
   siteIdParams,
   transitionDprSchema,
   updateDprSchema,
+  updateInstructionSchema,
   updateSiteSchema,
 } from './sites.validator.js';
 
@@ -32,6 +36,20 @@ router.post(
   validate({ params: dprIdParams, body: transitionDprSchema }),
   controller.transitionDpr,
 );
+router.post(
+  '/dpr/:id/photos',
+  can(UPDATE),
+  validate({ params: dprIdParams }),
+  createUpload({ allowedTypes: FILE_TYPES.images, maxFiles: 5, required: true }).array('photos'),
+  controller.uploadDprPhotos,
+);
+router.get('/dpr/:id/photos/:photoId/download', can(READ), validate({ params: dprIdParams }), controller.downloadDprPhoto);
+router.post('/dpr/:id/post-consumption', can(APPROVE), validate({ params: dprIdParams }), controller.postDprConsumption);
+
+/* Site Instructions */
+router.get('/instructions', can(READ), validate({ query: listInstructionsQuery }), controller.listInstructions);
+router.post('/instructions', can(CREATE), validate({ body: createInstructionSchema }), controller.createInstruction);
+router.patch('/instructions/:id', can(UPDATE), validate({ params: siteIdParams, body: updateInstructionSchema }), controller.updateInstruction);
 
 /* Sites CRUD */
 router.get('/', can(READ), validate({ query: listSitesQuery }), controller.listSites);

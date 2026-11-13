@@ -123,6 +123,7 @@ export const createDprSchema = z.object({
   materialUsage: z
     .array(
       z.object({
+        material: z.union([objectId, z.literal(''), z.null()]).transform((value) => value || null).optional(),
         materialName: z.string().trim().min(1, 'Enter material name').max(120),
         quantity: z.coerce.number().min(0, 'Quantity cannot be negative'),
         unit: z.string().trim().min(1, 'Enter unit').max(30),
@@ -134,6 +135,7 @@ export const createDprSchema = z.object({
   equipmentUsage: z
     .array(
       z.object({
+        equipment: z.union([objectId, z.literal(''), z.null()]).transform((value) => value || null).optional(),
         equipmentName: z.string().trim().min(1, 'Enter equipment name').max(120),
         hoursOperated: z.coerce.number().min(0).max(24),
         status: z.enum(['operational', 'breakdown', 'idle']).optional().default('operational'),
@@ -171,5 +173,28 @@ export const updateDprSchema = createDprSchema.partial().omit({ project: true, s
 export const transitionDprSchema = z.object({
   status: z.enum(Object.values(APPROVAL_STATUS)),
   comment: text(1000).optional(),
+});
+
+export const listInstructionsQuery = z.object({
+  project: objectId.optional(),
+  site: objectId.optional(),
+  status: z.enum(['open', 'acknowledged', 'complied', 'closed']).optional(),
+});
+
+export const createInstructionSchema = z.object({
+  project: objectId,
+  site: objectId,
+  subject: z.string().trim().min(2).max(180),
+  instruction: z.string().trim().min(2).max(2000),
+  category: z.enum(['quality', 'safety', 'progress', 'rework', 'general']).optional().default('general'),
+  priority: z.enum(['low', 'medium', 'high', 'critical']).optional().default('medium'),
+  issuedToName: text(120).optional().default(''),
+  issuedToUser: z.union([objectId, z.literal(''), z.null()]).transform((value) => value || null).optional(),
+  dueDate: dateField.optional(),
+});
+
+export const updateInstructionSchema = z.object({
+  status: z.enum(['open', 'acknowledged', 'complied', 'closed']).optional(),
+  responseNotes: text(1000).optional(),
 });
 

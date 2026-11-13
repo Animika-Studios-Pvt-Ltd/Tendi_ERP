@@ -26,6 +26,8 @@ export const createMaterialSchema = z.object({
   category: z.string().trim().min(1, 'Select category').max(80),
   unit: z.string().trim().min(1, 'Select unit').max(30),
   hsnCode: text(20).optional().default(''),
+  barcode: z.string().trim().toUpperCase().max(40).optional(),
+  gstPercent: z.coerce.number().min(0).max(50).optional().default(18),
   standardRate: z.coerce.number().min(0).optional().default(0),
   reorderLevel: z.coerce.number().min(0).optional().default(10),
   description: text(500).optional().default(''),

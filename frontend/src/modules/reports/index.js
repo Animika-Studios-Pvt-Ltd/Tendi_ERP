@@ -1,25 +1,23 @@
-import { ChartColumn } from 'lucide-react';
+import { BarChart3 } from 'lucide-react';
+import { lazy } from 'react';
 import { MODULES } from '@/constants/permissions';
+
+const ReportsPage = lazy(() => import('./pages/ReportsPage'));
 
 export default {
   key: MODULES.REPORTS,
-  title: 'Reports & Analytics',
+  title: 'Reports & Insights',
   path: '/reports',
-  icon: ChartColumn,
+  icon: BarChart3,
   permission: MODULES.REPORTS,
   group: 'insight',
   phase: 7,
-  description: 'A dedicated reporting workspace for cross-module analysis and exports.',
-  sections: [
-    { path: '', title: 'Report library' },
-    { path: 'project-cost', title: 'Project cost' },
-    { path: 'procurement', title: 'Procurement' },
-    { path: 'labour', title: 'Labour & attendance' },
-  ],
+  description: 'Cross-module analytics, financial variance, inventory valuation, and compliance CSV exports.',
+  element: ReportsPage,
+  sections: [{ path: '', title: 'Report library', element: ReportsPage }],
   capabilities: [
-    'Project cost and budget variance reports',
-    'Procurement cycle time and vendor performance',
-    'Labour productivity and attendance',
-    'Excel and PDF export with saved filters',
+    'Project, financial, procurement, inventory, HR, contractor, equipment, safety, client and legal reports',
+    'Dynamic project-scope filtering and per-module permission enforcement',
+    'CSV formula-safe export and print views',
   ],
 };

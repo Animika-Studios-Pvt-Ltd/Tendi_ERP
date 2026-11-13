@@ -6,6 +6,7 @@ const MaterialRequestsPage = lazy(() => import('./pages/MaterialRequestsPage'));
 const VendorsListPage = lazy(() => import('./pages/VendorsListPage'));
 const PurchaseOrdersPage = lazy(() => import('./pages/PurchaseOrdersPage'));
 const GoodsReceiptsPage = lazy(() => import('./pages/GoodsReceiptsPage'));
+const RfqsAndReturnsPage = lazy(() => import('./pages/RfqsAndReturnsPage'));
 
 export default {
   key: MODULES.PROCUREMENT,
@@ -19,6 +20,7 @@ export default {
   element: MaterialRequestsPage,
   sections: [
     { path: '', title: 'Material requests', element: MaterialRequestsPage },
+    { path: 'rfqs', title: 'RFQs & returns', element: RfqsAndReturnsPage },
     { path: 'vendors', title: 'Vendors', element: VendorsListPage },
     { path: 'purchase-orders', title: 'Purchase orders', element: PurchaseOrdersPage },
     { path: 'goods-receipts', title: 'Goods receipts', element: GoodsReceiptsPage },

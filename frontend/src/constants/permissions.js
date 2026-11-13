@@ -2,6 +2,7 @@
 export const MODULES = Object.freeze({
   DASHBOARD: 'dashboard',
   PROJECTS: 'projects',
+  ESTIMATION: 'estimation',
   SITES: 'sites',
   INVENTORY: 'inventory',
   PROCUREMENT: 'procurement',
@@ -12,6 +13,7 @@ export const MODULES = Object.freeze({
   EQUIPMENT: 'equipment',
   QUALITY_SAFETY: 'quality-safety',
   DOCUMENTS: 'documents',
+  LEGAL: 'legal',
   REPORTS: 'reports',
   USERS: 'users',
   SETTINGS: 'settings',

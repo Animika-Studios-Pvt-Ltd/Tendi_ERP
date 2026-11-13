@@ -1,29 +1,33 @@
-import { Handshake } from 'lucide-react';
+import { Briefcase } from 'lucide-react';
+import { createElement, lazy } from 'react';
 import { MODULES } from '@/constants/permissions';
+
+const ContractorsWorkspacePage = lazy(() => import('./pages/ContractorsWorkspacePage'));
+
+const ContractorsTab = () => createElement(ContractorsWorkspacePage, { initialTab: 'contractors' });
+const WorkOrdersTab = () => createElement(ContractorsWorkspacePage, { initialTab: 'work-orders' });
+const MeasurementsTab = () => createElement(ContractorsWorkspacePage, { initialTab: 'measurements' });
+const BillsTab = () => createElement(ContractorsWorkspacePage, { initialTab: 'bills' });
 
 export default {
   key: MODULES.CONTRACTORS,
   title: 'Contractor Management',
   path: '/contractors',
-  icon: Handshake,
+  icon: Briefcase,
   permission: MODULES.CONTRACTORS,
   group: 'commercial',
   phase: 5,
-  description: 'Manage subcontractors, contracts and work orders, and verify measurement-based bills.',
+  description: 'Subcontractor register, work orders, measurement books, and cumulative RA bill certification.',
+  element: ContractorsTab,
   sections: [
-    { path: '', title: 'Contractors' },
-    { path: 'contracts', title: 'Contracts' },
-    { path: 'work-orders', title: 'Work orders' },
-    { path: 'bills', title: 'Contractor bills' },
+    { path: '', title: 'Contractors', element: ContractorsTab },
+    { path: 'work-orders', title: 'Work orders', element: WorkOrdersTab },
+    { path: 'measurements', title: 'Measurement book', element: MeasurementsTab },
+    { path: 'bills', title: 'Contractor bills', element: BillsTab },
   ],
   capabilities: [
-    'Contractor register with compliance documents',
-    'Contracts and rate schedules',
-    'Work orders with measurement sheets',
-    'Running bills with retention and payment tracking',
+    'Contractor master & package work orders with retention and advance tracking',
+    'L×B×D measurement book entries and automated RA bill certification',
+    'Automatic payable invoice generation into Finance upon RA bill approval',
   ],
-  workflow: {
-    title: 'Contractor billing',
-    steps: ['Work order', 'Measurement details', 'Bill submission', 'Verification', 'Approval', 'Payment tracking'],
-  },
 };

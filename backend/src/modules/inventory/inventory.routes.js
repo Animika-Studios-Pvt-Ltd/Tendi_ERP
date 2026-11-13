@@ -3,6 +3,7 @@ import { ACTIONS, MODULES } from '../../config/rbac.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import * as controller from './inventory.controller.js';
+import inventoryDepthRoutes from './inventoryDepth.routes.js';
 import {
   createMaterialSchema,
   createTransactionSchema,
@@ -19,6 +20,7 @@ const can = (action) => authorize(MODULES.INVENTORY, action);
 
 const router = Router();
 router.use(authenticate);
+router.use('/', inventoryDepthRoutes);
 
 /* Stock Overview & Transactions */
 router.get('/stock', can(READ), validate({ query: listStockQuery }), controller.getStockOverview);

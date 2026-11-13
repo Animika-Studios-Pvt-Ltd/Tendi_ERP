@@ -1,22 +1,27 @@
-import { Forklift } from 'lucide-react';
+import { Wrench } from 'lucide-react';
+import { createElement, lazy } from 'react';
 import { MODULES } from '@/constants/permissions';
+
+const EquipmentWorkspacePage = lazy(() => import('./pages/EquipmentWorkspacePage'));
+const RegisterTab = () => createElement(EquipmentWorkspacePage, { initialTab: 'register' });
+const MaintenanceTab = () => createElement(EquipmentWorkspacePage, { initialTab: 'maintenance' });
 
 export default {
   key: MODULES.EQUIPMENT,
-  title: 'Equipment Management',
+  title: 'Equipment & Maintenance',
   path: '/equipment',
-  icon: Forklift,
+  icon: Wrench,
   permission: MODULES.EQUIPMENT,
   group: 'assets',
   phase: 6,
-  description: 'Keep a register of plant and machinery, where it is deployed, and its maintenance history.',
+  description: 'Track owned and hired machinery, site deployments, fuel and maintenance.',
+  element: RegisterTab,
   sections: [
-    { path: '', title: 'Equipment register' },
-    { path: 'maintenance', title: 'Maintenance' },
+    { path: '', title: 'Equipment register', element: RegisterTab },
+    { path: 'maintenance', title: 'Maintenance', element: MaintenanceTab },
   ],
   capabilities: [
-    'Owned and hired equipment register',
-    'Site deployment and utilisation log',
-    'Preventive and breakdown maintenance records',
+    'Equipment master for owned, rented and leased machinery',
+    'Usage, fuel, breakdown and preventive maintenance logging',
   ],
 };

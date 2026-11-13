@@ -8,6 +8,7 @@ const SiteDetailPage = lazy(() => import('./pages/SiteDetailPage'));
 const DprListPage = lazy(() => import('./pages/DprListPage'));
 const DprFormPage = lazy(() => import('./pages/DprFormPage'));
 const DprDetailPage = lazy(() => import('./pages/DprDetailPage'));
+const SiteInstructionsPage = lazy(() => import('./pages/SiteInstructionsPage'));
 
 export default {
   key: MODULES.SITES,
@@ -22,6 +23,7 @@ export default {
   sections: [
     { path: '', title: 'Sites', element: SitesListPage },
     { path: 'daily-progress', title: 'Daily progress reports', element: DprListPage },
+    { path: 'instructions', title: 'Site instructions', element: SiteInstructionsPage },
   ],
   routes: [
     { path: 'new', title: 'New site', element: SiteFormPage, action: ACTIONS.CREATE },

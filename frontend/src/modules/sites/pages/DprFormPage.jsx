@@ -11,6 +11,8 @@ import { Card, CardBody, CardFooter, CardHeader } from '@/components/ui/Card';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import Textarea from '@/components/ui/Textarea';
+import { useMasterData } from '@/hooks/useMasterData';
+import { inventoryService } from '@/services/inventory.service';
 import { projectsService } from '@/services/projects.service';
 import { sitesService } from '@/services/sites.service';
 import { WEATHER_CONDITION_OPTIONS, WEATHER_IMPACT_OPTIONS } from '../constants';
@@ -23,6 +25,8 @@ export default function DprFormPage() {
 
   const [projects, setProjects] = useState([]);
   const [sites, setSites] = useState([]);
+  const [catalogMaterials, setCatalogMaterials] = useState([]);
+  const { units } = useMasterData();
   const [initialLoading, setInitialLoading] = useState(true);
   const [initialError, setInitialError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -55,11 +59,13 @@ export default function DprFormPage() {
 
     Promise.all([
       projectsService.list({ limit: 100 }),
+      inventoryService.listMaterials({ limit: 100, isActive: 'true' }).catch(() => ({ data: [] })),
       isEdit ? sitesService.getDpr(id) : Promise.resolve(null),
     ])
-      .then(([projRes, dprRes]) => {
+      .then(([projRes, matRes, dprRes]) => {
         if (cancelled) return;
         setProjects(projRes.data);
+        setCatalogMaterials(matRes.data || []);
 
         if (dprRes?.data) {
           const d = dprRes.data;
@@ -120,12 +126,44 @@ export default function DprFormPage() {
 
   // Material helpers
   const addMaterialRow = () => {
-    setMaterials((prev) => [...prev, { materialName: '', quantity: '1', unit: 'bags', notes: '' }]);
+    setMaterials((prev) => [...prev, { material: '', materialName: '', quantity: '1', unit: units[0] || 'bags', notes: '' }]);
   };
   const updateMaterialRow = (index, field, value) => {
     setMaterials((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   };
+  const pickCatalogMaterial = (index, matId) => {
+    const mat = catalogMaterials.find((m) => m.id === matId);
+    setMaterials((prev) =>
+      prev.map((row, i) =>
+        i === index
+          ? {
+              ...row,
+              material: matId,
+              materialName: mat ? mat.name : row.materialName,
+              unit: mat ? mat.unit : row.unit,
+            }
+          : row,
+      ),
+    );
+  };
   const removeMaterialRow = (index) => setMaterials((prev) => prev.filter((_, i) => i !== index));
+
+  // Equipment & Site Issue helpers
+  const addEquipmentRow = () => {
+    setEquipment((prev) => [...prev, { equipmentName: '', hoursOperated: '8', status: 'operational' }]);
+  };
+  const updateEquipmentRow = (index, field, value) => {
+    setEquipment((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  };
+  const removeEquipmentRow = (index) => setEquipment((prev) => prev.filter((_, i) => i !== index));
+
+  const addIssueRow = () => {
+    setIssues((prev) => [...prev, { title: '', severity: 'medium', status: 'open', actionPlan: '' }]);
+  };
+  const updateIssueRow = (index, field, value) => {
+    setIssues((prev) => prev.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  };
+  const removeIssueRow = (index) => setIssues((prev) => prev.filter((_, i) => i !== index));
 
   const handleSubmit = async (e, shouldSubmitForReview = false) => {
     e.preventDefault();
@@ -397,9 +435,9 @@ export default function DprFormPage() {
         <Card>
           <CardHeader
             title="Material Consumption"
-            description="Major materials utilized during today's shift"
-            action={
-              <Button type="button" size="sm" variant="outline" leftIcon={Plus} onClick={addMaterialRow}>
+            description="Select catalog materials to enable one-click stock issue upon PM approval"
+            actions={
+              <Button type="button" size="sm" variant="secondary" leftIcon={Plus} onClick={addMaterialRow}>
                 Add material
               </Button>
             }
@@ -410,14 +448,22 @@ export default function DprFormPage() {
             ) : (
               materials.map((row, idx) => (
                 <div key={idx} className="flex flex-col sm:flex-row items-center gap-2">
+                  <div className="w-full sm:w-52">
+                    <Select
+                      value={row.material || ''}
+                      onChange={(e) => pickCatalogMaterial(idx, e.target.value)}
+                      placeholder="Catalog item…"
+                      options={catalogMaterials.map((m) => ({ value: m.id, label: `${m.code} · ${m.name}` }))}
+                    />
+                  </div>
                   <div className="flex-1 w-full sm:w-auto">
                     <Input
-                      placeholder="Material (e.g. Cement PPC, 12mm TMT Steel)"
+                      placeholder="Material name"
                       value={row.materialName}
                       onChange={(e) => updateMaterialRow(idx, 'materialName', e.target.value)}
                     />
                   </div>
-                  <div className="w-full sm:w-28">
+                  <div className="w-full sm:w-24">
                     <Input
                       type="number"
                       placeholder="Qty"
@@ -427,14 +473,14 @@ export default function DprFormPage() {
                   </div>
                   <div className="w-full sm:w-28">
                     <Input
-                      placeholder="Unit (bags)"
+                      placeholder="Unit"
                       value={row.unit}
                       onChange={(e) => updateMaterialRow(idx, 'unit', e.target.value)}
                     />
                   </div>
-                  <div className="w-full sm:w-48">
+                  <div className="w-full sm:w-40">
                     <Input
-                      placeholder="Notes / Batch #"
+                      placeholder="Notes"
                       value={row.notes}
                       onChange={(e) => updateMaterialRow(idx, 'notes', e.target.value)}
                     />
@@ -445,6 +491,110 @@ export default function DprFormPage() {
                     size="sm"
                     onClick={() => removeMaterialRow(idx)}
                   >
+                    <Trash2 className="h-4 w-4 text-muted hover:text-danger-600" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Equipment Usage */}
+        <Card>
+          <CardHeader
+            title="Equipment & Machinery Usage"
+            description="Plant and machinery deployed during this shift"
+            actions={
+              <Button type="button" size="sm" variant="secondary" leftIcon={Plus} onClick={addEquipmentRow}>
+                Add equipment
+              </Button>
+            }
+          />
+          <CardBody className="space-y-3">
+            {!equipment.length ? (
+              <p className="text-xs text-muted">No machinery entries recorded.</p>
+            ) : (
+              equipment.map((row, idx) => (
+                <div key={idx} className="flex flex-col sm:flex-row items-center gap-2">
+                  <div className="flex-1 w-full sm:w-auto">
+                    <Input
+                      placeholder="Equipment name (e.g. Excavator JCB, Transit Mixer)"
+                      value={row.equipmentName}
+                      onChange={(e) => updateEquipmentRow(idx, 'equipmentName', e.target.value)}
+                    />
+                  </div>
+                  <div className="w-full sm:w-28">
+                    <Input
+                      type="number"
+                      placeholder="Hours"
+                      value={row.hoursOperated}
+                      onChange={(e) => updateEquipmentRow(idx, 'hoursOperated', e.target.value)}
+                    />
+                  </div>
+                  <div className="w-full sm:w-36">
+                    <Select
+                      value={row.status}
+                      onChange={(e) => updateEquipmentRow(idx, 'status', e.target.value)}
+                      options={[
+                        { value: 'operational', label: 'Operational' },
+                        { value: 'idle', label: 'Idle' },
+                        { value: 'breakdown', label: 'Breakdown' },
+                      ]}
+                    />
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeEquipmentRow(idx)}>
+                    <Trash2 className="h-4 w-4 text-muted hover:text-danger-600" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </CardBody>
+        </Card>
+
+        {/* Site Issues */}
+        <Card>
+          <CardHeader
+            title="Site Issues & Blockers"
+            description="Capture hindrances, safety concerns, or design clarifications needed"
+            actions={
+              <Button type="button" size="sm" variant="secondary" leftIcon={Plus} onClick={addIssueRow}>
+                Add issue
+              </Button>
+            }
+          />
+          <CardBody className="space-y-3">
+            {!issues.length ? (
+              <p className="text-xs text-muted">No site blockers logged for this date.</p>
+            ) : (
+              issues.map((row, idx) => (
+                <div key={idx} className="flex flex-col sm:flex-row items-center gap-2">
+                  <div className="flex-1 w-full sm:w-auto">
+                    <Input
+                      placeholder="Issue / Hindrance title"
+                      value={row.title}
+                      onChange={(e) => updateIssueRow(idx, 'title', e.target.value)}
+                    />
+                  </div>
+                  <div className="w-full sm:w-32">
+                    <Select
+                      value={row.severity}
+                      onChange={(e) => updateIssueRow(idx, 'severity', e.target.value)}
+                      options={[
+                        { value: 'low', label: 'Low' },
+                        { value: 'medium', label: 'Medium' },
+                        { value: 'high', label: 'High' },
+                        { value: 'critical', label: 'Critical' },
+                      ]}
+                    />
+                  </div>
+                  <div className="w-full sm:w-56">
+                    <Input
+                      placeholder="Action plan"
+                      value={row.actionPlan}
+                      onChange={(e) => updateIssueRow(idx, 'actionPlan', e.target.value)}
+                    />
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => removeIssueRow(idx)}>
                     <Trash2 className="h-4 w-4 text-muted hover:text-danger-600" />
                   </Button>
                 </div>

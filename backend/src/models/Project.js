@@ -70,6 +70,8 @@ const projectSchema = new Schema(
     },
 
     projectManager: { type: Schema.Types.ObjectId, ref: 'User', index: true },
+    estimateRef: { type: Schema.Types.ObjectId, ref: 'Estimate', index: true },
+    clientRef: { type: Schema.Types.ObjectId, ref: 'Client', index: true },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User' },
     updatedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },

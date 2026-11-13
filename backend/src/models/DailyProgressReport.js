@@ -42,9 +42,11 @@ const labourItemSchema = new Schema(
 
 const materialItemSchema = new Schema(
   {
+    material: { type: Schema.Types.ObjectId, ref: 'Material', default: null },
     materialName: { type: String, required: true, trim: true, maxlength: 120 },
     quantity: { type: Number, required: true, min: 0 },
     unit: { type: String, required: true, trim: true, maxlength: 30 },
+    inventoryTx: { type: Schema.Types.ObjectId, ref: 'InventoryTransaction', default: null },
     notes: { type: String, trim: true, maxlength: 200, default: '' },
   },
   { _id: false },
@@ -52,6 +54,7 @@ const materialItemSchema = new Schema(
 
 const equipmentItemSchema = new Schema(
   {
+    equipment: { type: Schema.Types.ObjectId, ref: 'Equipment', default: null },
     equipmentName: { type: String, required: true, trim: true, maxlength: 120 },
     hoursOperated: { type: Number, required: true, min: 0, max: 24 },
     status: { type: String, enum: ['operational', 'breakdown', 'idle'], default: 'operational' },
@@ -72,11 +75,18 @@ const siteIssueSchema = new Schema(
 
 const photoSchema = new Schema(
   {
-    url: { type: String, required: true },
+    url: { type: String, default: '' },
     caption: { type: String, trim: true, maxlength: 200, default: '' },
     key: String,
+    provider: String,
+    resourceType: String,
+    format: String,
+    mimeType: String,
+    size: Number,
+    originalName: String,
+    uploadedBy: { type: Schema.Types.ObjectId, ref: 'User' },
   },
-  { _id: false },
+  { timestamps: true },
 );
 
 const dprSchema = new Schema(
@@ -104,6 +114,8 @@ const dprSchema = new Schema(
     equipmentUsage: { type: [equipmentItemSchema], default: [] },
     siteIssues: { type: [siteIssueSchema], default: [] },
     photos: { type: [photoSchema], default: [] },
+    inventoryPosted: { type: Boolean, default: false },
+    postedAt: Date,
     remarks: { type: String, trim: true, maxlength: 1000, default: '' },
 
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },

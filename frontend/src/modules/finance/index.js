@@ -1,5 +1,13 @@
 import { Wallet } from 'lucide-react';
+import { createElement, lazy } from 'react';
 import { MODULES } from '@/constants/permissions';
+
+const FinanceWorkspacePage = lazy(() => import('./pages/FinanceWorkspacePage'));
+
+const BudgetsTab = () => createElement(FinanceWorkspacePage, { initialTab: 'budgets' });
+const ExpensesTab = () => createElement(FinanceWorkspacePage, { initialTab: 'expenses' });
+const InvoicesTab = () => createElement(FinanceWorkspacePage, { initialTab: 'invoices' });
+const PaymentsTab = () => createElement(FinanceWorkspacePage, { initialTab: 'payments' });
 
 export default {
   key: MODULES.FINANCE,
@@ -10,20 +18,17 @@ export default {
   group: 'commercial',
   phase: 4,
   description: 'Control project budgets and BOQs, approve expenses, and track invoices and payments.',
+  element: BudgetsTab,
   sections: [
-    { path: '', title: 'Budgets & BOQ' },
-    { path: 'expenses', title: 'Expenses' },
-    { path: 'invoices', title: 'Invoices' },
-    { path: 'payments', title: 'Payments' },
+    { path: '', title: 'Budgets & BOQ', element: BudgetsTab },
+    { path: 'expenses', title: 'Expenses', element: ExpensesTab },
+    { path: 'invoices', title: 'Invoices', element: InvoicesTab },
+    { path: 'payments', title: 'Payments', element: PaymentsTab },
   ],
   capabilities: [
-    'Project budgets by cost head with BOQ line items',
-    'Expense claims with project and category coding',
-    'Client invoicing and payment receipts',
-    'Budget vs actual cost reporting',
+    'Project budgets with revisions and live EAC commitments vs actual control',
+    'Expense claims enforcing approval authority limits',
+    'Vendor 3-way AP matching, Contractor payables, and Client AR invoicing',
+    'Cash flow & atomic payment settlement ledger',
   ],
-  workflow: {
-    title: 'Expense control',
-    steps: ['Expense submitted', 'Project and category selected', 'Approval', 'Accountant records payment', 'Project cost report updates'],
-  },
 };

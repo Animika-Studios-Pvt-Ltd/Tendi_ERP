@@ -5,6 +5,7 @@ import { MODULES } from '@/constants/permissions';
 const StockOverviewPage = lazy(() => import('./pages/StockOverviewPage'));
 const MaterialsListPage = lazy(() => import('./pages/MaterialsListPage'));
 const TransactionsListPage = lazy(() => import('./pages/TransactionsListPage'));
+const InventoryControlPage = lazy(() => import('./pages/InventoryControlPage'));
 
 export default {
   key: MODULES.INVENTORY,
@@ -20,6 +21,7 @@ export default {
     { path: '', title: 'Stock overview', element: StockOverviewPage },
     { path: 'materials', title: 'Material master', element: MaterialsListPage },
     { path: 'transactions', title: 'Stock movements', element: TransactionsListPage },
+    { path: 'control', title: 'Stores & audits', element: InventoryControlPage },
   ],
   capabilities: [
     'Material master with units, categories and reorder levels',

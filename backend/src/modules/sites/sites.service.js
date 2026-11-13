@@ -1,16 +1,21 @@
 import { MODULES } from '../../config/rbac.js';
+import { TRANSACTION_TYPES } from '../../models/InventoryTransaction.js';
 import { APPROVAL_STATUS } from '../../models/plugins/approvalWorkflow.js';
 import { DailyProgressReport } from '../../models/DailyProgressReport.js';
 import { NOTIFICATION_TYPES } from '../../models/Notification.js';
 import { Project } from '../../models/Project.js';
 import { Site, SITE_STATUS } from '../../models/Site.js';
+import { SiteInstruction } from '../../models/SiteInstruction.js';
 import { User, USER_STATUS } from '../../models/User.js';
 import { executeApprovalTransition } from '../../services/approval.service.js';
+import { assertFileAccess } from '../../services/files/fileAccess.js';
 import { notifyProjectApprovers, notifyUsers } from '../../services/notification.service.js';
 import { nextSequenceNumber } from '../../services/sequence.service.js';
+import { createFileAccessUrl, storeValidatedFiles } from '../../services/storage/index.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { paginate, parsePagination } from '../../utils/pagination.js';
 import { buildProjectScope, canAccessProject } from '../../utils/scope.js';
+import { recordTransaction } from '../inventory/inventory.service.js';
 
 const SITE_SORT_FIELDS = ['createdAt', 'name', 'code', 'status', 'startDate'];
 const DPR_SORT_FIELDS = ['createdAt', 'reportDate', 'reportNumber', 'status'];
@@ -91,6 +96,8 @@ export function toDprDto(doc) {
       assignedTo: toPerson(issue.assignedTo),
     })),
     photos: dpr.photos ?? [],
+    inventoryPosted: Boolean(dpr.inventoryPosted),
+    postedAt: dpr.postedAt ?? null,
     remarks: dpr.remarks ?? '',
     status: dpr.status,
     submittedBy: toPerson(dpr.submittedBy),
@@ -388,5 +395,128 @@ export async function transitionDpr(user, id, { status: targetStatus, comment })
   ]);
 
   return toDprDto(dpr);
+}
+
+export async function addDprPhotos(user, id, files = [], caption = '') {
+  const dpr = await DailyProgressReport.findOne(scoped(user, { _id: id }));
+  if (!dpr) throw ApiError.notFound('Daily progress report not found');
+
+  const stored = await storeValidatedFiles(files, { folder: `sites/${dpr.project}` });
+  for (const s of stored) {
+    dpr.photos.push({
+      ...s,
+      url: '',
+      caption: caption || s.originalName || '',
+      uploadedBy: user._id,
+    });
+  }
+  dpr.updatedBy = user._id;
+  await dpr.save();
+  await dpr.populate([
+    { path: 'project', select: PROJECT_SELECT },
+    { path: 'site', select: 'code name' },
+    { path: 'createdBy', select: PERSON_SELECT },
+  ]);
+  return toDprDto(dpr);
+}
+
+export async function getDprPhotoDownloadUrl(user, dprId, photoId) {
+  const dpr = await DailyProgressReport.findOne(scoped(user, { _id: dprId })).lean();
+  if (!dpr) throw ApiError.notFound('Daily progress report not found');
+  const photo = (dpr.photos ?? []).find((p) => String(p._id) === String(photoId));
+  if (!photo || !photo.key) throw ApiError.notFound('Photo not found');
+  assertFileAccess(user, { _id: photo._id, project: dpr.project, uploadedBy: photo.uploadedBy || dpr.createdBy }, { module: MODULES.SITES, action: 'read' });
+  const { url, expiresAt } = createFileAccessUrl(photo);
+  return { url, expiresAt, name: photo.originalName || 'site-photo' };
+}
+
+export async function postDprConsumption(user, id) {
+  const dpr = await DailyProgressReport.findOne(scoped(user, { _id: id }));
+  if (!dpr) throw ApiError.notFound('Daily progress report not found');
+  if (dpr.status !== APPROVAL_STATUS.APPROVED) {
+    throw ApiError.badRequest('Only approved DPRs can post material consumption to Inventory');
+  }
+  if (dpr.inventoryPosted) {
+    throw ApiError.badRequest('Inventory consumption has already been posted for this DPR');
+  }
+
+  let postedCount = 0;
+  for (const item of dpr.materialUsage ?? []) {
+    if (!item.material || item.inventoryTx || !item.quantity) continue;
+    const tx = await recordTransaction(
+      user,
+      {
+        project: String(dpr.project),
+        site: String(dpr.site),
+        material: String(item.material),
+        type: TRANSACTION_TYPES.ISSUE,
+        quantity: item.quantity,
+        referenceType: 'DailyProgressReport',
+        referenceId: dpr._id,
+        referenceNumber: dpr.reportNumber,
+        transactionDate: dpr.reportDate,
+        issuedTo: `Site DPR ${dpr.reportNumber}`,
+        remarks: item.notes || `Auto-issued from approved DPR ${dpr.reportNumber}`,
+      },
+      { bypassAccessCheck: true },
+    );
+    item.inventoryTx = tx.id;
+    postedCount += 1;
+  }
+
+  dpr.inventoryPosted = true;
+  dpr.postedAt = new Date();
+  dpr.updatedBy = user._id;
+  await dpr.save();
+  return { dprId: String(dpr._id), reportNumber: dpr.reportNumber, postedCount };
+}
+
+/* =========================================================================
+ * SITE INSTRUCTIONS (SI)
+ * ========================================================================= */
+
+export async function listSiteInstructions(user, query = {}) {
+  const filter = {};
+  if (query.project) filter.project = query.project;
+  if (query.site) filter.site = query.site;
+  if (query.status) filter.status = query.status;
+
+  const rows = await SiteInstruction.find(scoped(user, filter))
+    .populate('project', PROJECT_SELECT)
+    .populate('site', 'code name')
+    .populate('issuedToUser createdBy', PERSON_SELECT)
+    .sort({ createdAt: -1 })
+    .lean();
+
+  return rows.map((r) => ({ ...r, id: String(r._id) }));
+}
+
+export async function createSiteInstruction(user, input) {
+  if (!canAccessProject(user, input.project)) throw ApiError.forbidden('You do not have access to this project');
+  const site = await Site.findOne({ _id: input.site, project: input.project }).lean();
+  if (!site) throw ApiError.badRequest('Selected site does not belong to this project');
+
+  const siNumber = await nextSequenceNumber('siteInstruction', { prefixOverride: 'SI', minPadding: 3 });
+  const si = await SiteInstruction.create({ ...input, siNumber, createdBy: user._id, updatedBy: user._id });
+  await si.populate([
+    { path: 'project', select: PROJECT_SELECT },
+    { path: 'site', select: 'code name' },
+    { path: 'createdBy', select: PERSON_SELECT },
+  ]);
+  return { ...si.toObject(), id: String(si._id) };
+}
+
+export async function updateSiteInstruction(user, id, input) {
+  const si = await SiteInstruction.findOne(scoped(user, { _id: id }));
+  if (!si) throw ApiError.notFound('Site instruction not found');
+  Object.assign(si, input);
+  si.updatedBy = user._id;
+  await si.save();
+  await si.populate([
+    { path: 'project', select: PROJECT_SELECT },
+    { path: 'site', select: 'code name' },
+    { path: 'createdBy', select: PERSON_SELECT },
+  ]);
+  return { ...si.toObject(), id: String(si._id) };
 }
 

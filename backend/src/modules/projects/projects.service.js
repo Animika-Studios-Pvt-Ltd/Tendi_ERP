@@ -59,6 +59,7 @@ export function toProjectDto(doc) {
         }
       : null,
     projectManager: toPerson(project.projectManager),
+    estimateRef: project.estimateRef ? String(project.estimateRef._id || project.estimateRef) : null,
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
   };

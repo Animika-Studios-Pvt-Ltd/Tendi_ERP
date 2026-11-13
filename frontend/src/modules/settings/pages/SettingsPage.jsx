@@ -23,6 +23,8 @@ const TABS = [
 
 const SERIES_LABELS = {
   project: 'Projects',
+  estimate: 'Cost Estimates',
+  tender: 'Tenders & Bids',
   site: 'Construction Sites',
   dpr: 'Daily Progress Reports (DPR)',
   materialRequest: 'Material Requests (MR)',

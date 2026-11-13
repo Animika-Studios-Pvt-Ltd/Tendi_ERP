@@ -1,13 +1,22 @@
 import { Router } from 'express';
 import { MODULES } from '../../config/rbac.js';
 import { authenticate } from '../../middleware/auth.js';
+import { Client } from '../../models/Crm.js';
+import { Contractor } from '../../models/Contractor.js';
 import { DailyProgressReport } from '../../models/DailyProgressReport.js';
+import { Document } from '../../models/Document.js';
+import { Drawing } from '../../models/Drawing.js';
+import { Equipment } from '../../models/Equipment.js';
+import { Estimate } from '../../models/Estimate.js';
+import { Employee } from '../../models/Hr.js';
+import { NonConformanceReport } from '../../models/QualitySafety.js';
 import { Material } from '../../models/Material.js';
 import { MaterialRequest } from '../../models/MaterialRequest.js';
 import { Project } from '../../models/Project.js';
 import { PurchaseOrder } from '../../models/PurchaseOrder.js';
 import { Site } from '../../models/Site.js';
 import { Task } from '../../models/Task.js';
+import { Tender } from '../../models/Tender.js';
 import { User } from '../../models/User.js';
 import { Vendor } from '../../models/Vendor.js';
 import { sendSuccess } from '../../utils/apiResponse.js';
@@ -65,6 +74,43 @@ router.get('/', async (req, res) => {
           title: t.title,
           subtitle: `${t.code} · ${t.status}`,
           link: '/projects/tasks',
+        }),
+      ),
+    );
+  }
+
+  if (canUser(user, MODULES.ESTIMATION)) {
+    const estScope =
+      user.role?.dataScope === 'all'
+        ? {}
+        : { $or: [{ project: { $in: user.assignedProjects ?? [] } }, { project: null }] };
+    queries.push(
+      searchCollection(
+        Estimate,
+        { $and: [estScope, { $or: [{ estimateNumber: rx }, { title: rx }, { enquiryCode: rx }, { 'client.name': rx }] }] },
+        'estimateNumber title status quotedTotal',
+        (e) => ({
+          type: 'Estimate',
+          module: MODULES.ESTIMATION,
+          id: String(e._id),
+          code: e.estimateNumber,
+          title: e.title,
+          subtitle: `${e.estimateNumber} · ${e.status}`,
+          link: `/estimation/${e._id}`,
+        }),
+      ),
+      searchCollection(
+        Tender,
+        { $and: [estScope, { $or: [{ tenderNumber: rx }, { title: rx }] }] },
+        'tenderNumber title status',
+        (t) => ({
+          type: 'Tender',
+          module: MODULES.ESTIMATION,
+          id: String(t._id),
+          code: t.tenderNumber,
+          title: t.title,
+          subtitle: `${t.tenderNumber} · ${t.status}`,
+          link: '/estimation/tenders',
         }),
       ),
     );
@@ -184,6 +230,78 @@ router.get('/', async (req, res) => {
           subtitle: u.email,
           link: `/users/${u._id}`,
         }),
+      ),
+    );
+  }
+
+  if (canUser(user, MODULES.DOCUMENTS)) {
+    queries.push(
+      searchCollection(
+        Document,
+        { $and: [childScope, { $or: [{ documentNumber: rx }, { title: rx }, { folder: rx }] }] },
+        'documentNumber title folder',
+        (d) => ({ type: 'Document', module: MODULES.DOCUMENTS, id: String(d._id), code: d.documentNumber, title: d.title, subtitle: `${d.documentNumber} · ${d.folder}`, link: '/documents' }),
+      ),
+      searchCollection(
+        Drawing,
+        { $and: [childScope, { $or: [{ drawingNumber: rx }, { title: rx }] }] },
+        'drawingNumber title currentRevisionCode',
+        (d) => ({ type: 'Drawing', module: MODULES.DOCUMENTS, id: String(d._id), code: d.drawingNumber, title: d.title, subtitle: `${d.drawingNumber} · ${d.currentRevisionCode}`, link: '/documents' }),
+      ),
+    );
+  }
+
+  if (canUser(user, MODULES.CONTRACTORS)) {
+    queries.push(
+      searchCollection(
+        Contractor,
+        { $or: [{ code: rx }, { companyName: rx }] },
+        'code companyName',
+        (c) => ({ type: 'Contractor', module: MODULES.CONTRACTORS, id: String(c._id), code: c.code, title: c.companyName, subtitle: c.code, link: '/contractors' }),
+      ),
+    );
+  }
+
+  if (canUser(user, MODULES.CRM)) {
+    queries.push(
+      searchCollection(
+        Client,
+        { $or: [{ code: rx }, { name: rx }] },
+        'code name city',
+        (c) => ({ type: 'Client', module: MODULES.CRM, id: String(c._id), code: c.code, title: c.name, subtitle: `${c.code} · ${c.city}`, link: '/crm' }),
+      ),
+    );
+  }
+
+  if (canUser(user, MODULES.EQUIPMENT)) {
+    queries.push(
+      searchCollection(
+        Equipment,
+        { $or: [{ code: rx }, { name: rx }] },
+        'code name status',
+        (e) => ({ type: 'Equipment', module: MODULES.EQUIPMENT, id: String(e._id), code: e.code, title: e.name, subtitle: `${e.code} · ${e.status}`, link: '/equipment' }),
+      ),
+    );
+  }
+
+  if (canUser(user, MODULES.HR)) {
+    queries.push(
+      searchCollection(
+        Employee,
+        { $or: [{ empCode: rx }, { fullName: rx }] },
+        'empCode fullName workerCategory',
+        (e) => ({ type: 'Worker', module: MODULES.HR, id: String(e._id), code: e.empCode, title: e.fullName, subtitle: `${e.empCode} · ${e.workerCategory}`, link: '/hr' }),
+      ),
+    );
+  }
+
+  if (canUser(user, MODULES.QUALITY_SAFETY)) {
+    queries.push(
+      searchCollection(
+        NonConformanceReport,
+        { $and: [childScope, { $or: [{ ncrNumber: rx }, { title: rx }] }] },
+        'ncrNumber title severity status',
+        (n) => ({ type: 'NCR', module: MODULES.QUALITY_SAFETY, id: String(n._id), code: n.ncrNumber, title: n.title, subtitle: `${n.ncrNumber} · ${n.severity}`, link: '/quality-safety' }),
       ),
     );
   }

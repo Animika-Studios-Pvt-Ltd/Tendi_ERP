@@ -41,6 +41,8 @@ export const updateSettingsSchema = z
     numberingSeries: z
       .object({
         project: numberingRule.optional(),
+        estimate: numberingRule.optional(),
+        tender: numberingRule.optional(),
         site: numberingRule.optional(),
         dpr: numberingRule.optional(),
         materialRequest: numberingRule.optional(),

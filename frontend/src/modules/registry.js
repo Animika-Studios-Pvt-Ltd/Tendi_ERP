@@ -3,9 +3,11 @@ import crm from './crm';
 import dashboard from './dashboard';
 import documents from './documents';
 import equipment from './equipment';
+import estimation from './estimation';
 import finance from './finance';
 import hr from './hr';
 import inventory from './inventory';
+import legal from './legal';
 import procurement from './procurement';
 import projects from './projects';
 import qualitySafety from './quality-safety';
@@ -36,6 +38,7 @@ export const MODULE_REGISTRY = [
   sites,
   inventory,
   procurement,
+  estimation,
   finance,
   hr,
   contractors,
@@ -43,6 +46,7 @@ export const MODULE_REGISTRY = [
   equipment,
   qualitySafety,
   documents,
+  legal,
   reports,
   users,
   settings,

@@ -43,7 +43,15 @@ export async function startDbApp() {
     if (as) headers.authorization = `Bearer ${as.token}`;
     const res = await fetch(`${baseUrl}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
     const text = await res.text();
-    return { status: res.status, body: text ? JSON.parse(text) : null, text };
+    let parsed = null;
+    if (text) {
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        parsed = null;
+      }
+    }
+    return { status: res.status, body: parsed, text };
   }
 
   async function stop() {

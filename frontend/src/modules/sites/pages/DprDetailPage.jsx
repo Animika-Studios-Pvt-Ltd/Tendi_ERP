@@ -10,8 +10,9 @@ import Badge from '@/components/ui/Badge';
 import Button from '@/components/ui/Button';
 import { Card, CardBody, CardHeader } from '@/components/ui/Card';
 import Textarea from '@/components/ui/Textarea';
-import { ACTIONS, MODULES } from '@/constants/permissions';
+import { MODULES, ACTIONS } from '@/constants/permissions';
 import { useAuth } from '@/hooks/useAuth';
+import { erpService } from '@/services/erp.service';
 import { sitesService } from '@/services/sites.service';
 import { formatDate } from '@/utils/format';
 
@@ -305,7 +306,23 @@ export default function DprDetailPage() {
           {/* Material Usage */}
           {Boolean(dpr.materialUsage?.length) && (
             <Card>
-              <CardHeader title="Materials Consumed" />
+              <CardHeader
+                title="Materials Consumed"
+                actions={
+                  isApproved && !dpr.inventoryPosted && canApprove && (
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      onClick={async () => {
+                        await erpService.sitesExtra.postConsumption(dpr.id);
+                        load();
+                      }}
+                    >
+                      Post Consumption to Stock
+                    </Button>
+                  )
+                }
+              />
               <CardBody className="p-0">
                 <table className="w-full text-left text-xs">
                   <thead className="border-b border-line bg-navy-50/50 uppercase text-muted">
@@ -330,6 +347,92 @@ export default function DprDetailPage() {
               </CardBody>
             </Card>
           )}
+
+          {/* Equipment & Site Issues */}
+          {(Boolean(dpr.equipmentUsage?.length) || Boolean(dpr.siteIssues?.length)) && (
+            <div className="grid gap-4 md:grid-cols-2">
+              {Boolean(dpr.equipmentUsage?.length) && (
+                <Card>
+                  <CardHeader title="Equipment Usage" />
+                  <CardBody className="space-y-1.5 text-xs">
+                    {dpr.equipmentUsage.map((eq, i) => (
+                      <div key={i} className="flex justify-between rounded border border-line px-3 py-1.5">
+                        <span className="font-medium text-ink">{eq.equipmentName}</span>
+                        <span className="text-muted">{eq.hoursOperated}h · {eq.status}</span>
+                      </div>
+                    ))}
+                  </CardBody>
+                </Card>
+              )}
+              {Boolean(dpr.siteIssues?.length) && (
+                <Card>
+                  <CardHeader title="Site Issues" />
+                  <CardBody className="space-y-1.5 text-xs">
+                    {dpr.siteIssues.map((iss, i) => (
+                      <div key={i} className="rounded border border-line px-3 py-1.5">
+                        <p className="font-medium text-ink">{iss.title} ({iss.severity})</p>
+                        {iss.actionPlan && <p className="text-muted">{iss.actionPlan}</p>}
+                      </div>
+                    ))}
+                  </CardBody>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Site Photographs */}
+          <Card>
+            <CardHeader
+              title="Site Photographs"
+              actions={
+                canUpdate && (
+                  <label className="cursor-pointer rounded-md border border-line bg-surface px-3 py-1.5 text-xs font-medium text-ink hover:bg-canvas">
+                    Upload Photos
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      multiple
+                      className="hidden"
+                      onChange={async (e) => {
+                        if (!e.target.files?.length) return;
+                        const fd = new FormData();
+                        for (const f of e.target.files) fd.append('photos', f);
+                        await erpService.sitesExtra.uploadDprPhotos(dpr.id, fd);
+                        load();
+                      }}
+                    />
+                  </label>
+                )
+              }
+            />
+            <CardBody className="text-xs text-muted">
+              {!dpr.photos?.length ? (
+                'No site photographs uploaded yet.'
+              ) : (
+                <div className="space-y-1.5">
+                  {dpr.photos.map((p, idx) => (
+                    <div key={p._id || idx} className="flex items-center justify-between rounded border border-line px-3 py-1.5">
+                      <span>{p.originalName || p.caption || `Photo #${idx + 1}`}</span>
+                      {p._id && p.key ? (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={async () => {
+                            const res = await erpService.sitesExtra.getPhotoUrl(dpr.id, p._id);
+                            window.open(res.data.url, '_blank', 'noopener');
+                          }}
+                        >
+                          View Signed Photo
+                        </Button>
+                      ) : p.url ? (
+                        <a href={p.url} target="_blank" rel="noreferrer" className="text-navy-700 underline">Open</a>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardBody>
+          </Card>
 
           {/* Remarks */}
           {dpr.remarks && (

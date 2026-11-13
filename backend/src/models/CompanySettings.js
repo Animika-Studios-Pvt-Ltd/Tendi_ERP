@@ -44,6 +44,8 @@ const companySettingsSchema = new Schema(
     },
     numberingSeries: {
       project: { type: numberingRuleSchema, default: () => ({ prefix: 'PRJ', nextNumber: 1, padding: 3 }) },
+      estimate: { type: numberingRuleSchema, default: () => ({ prefix: 'EST', nextNumber: 1, padding: 3 }) },
+      tender: { type: numberingRuleSchema, default: () => ({ prefix: 'TND', nextNumber: 1, padding: 3 }) },
       site: { type: numberingRuleSchema, default: () => ({ prefix: 'SITE', nextNumber: 1, padding: 3 }) },
       dpr: { type: numberingRuleSchema, default: () => ({ prefix: 'DPR', nextNumber: 1, padding: 3 }) },
       materialRequest: { type: numberingRuleSchema, default: () => ({ prefix: 'MR', nextNumber: 1, padding: 4 }) },

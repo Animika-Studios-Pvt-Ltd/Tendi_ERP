@@ -7,6 +7,7 @@
 export const MODULES = Object.freeze({
   DASHBOARD: 'dashboard',
   PROJECTS: 'projects',
+  ESTIMATION: 'estimation',
   SITES: 'sites',
   INVENTORY: 'inventory',
   PROCUREMENT: 'procurement',
@@ -17,6 +18,7 @@ export const MODULES = Object.freeze({
   EQUIPMENT: 'equipment',
   QUALITY_SAFETY: 'quality-safety',
   DOCUMENTS: 'documents',
+  LEGAL: 'legal',
   REPORTS: 'reports',
   USERS: 'users',
   SETTINGS: 'settings',
@@ -84,6 +86,7 @@ export const DEFAULT_ROLES = [
     permissions: {
       dashboard: [R],
       projects: [C, R, U, A, X],
+      estimation: [C, R, U, A, X],
       sites: [C, R, U, A, X],
       inventory: [R],
       procurement: [C, R, U, A, X],
@@ -93,7 +96,8 @@ export const DEFAULT_ROLES = [
       crm: [R],
       equipment: [R, U],
       'quality-safety': [C, R, U, A, X],
-      documents: [C, R, U],
+      documents: [C, R, U, A, X],
+      legal: [R],
       reports: [R],
     },
   },
@@ -105,6 +109,7 @@ export const DEFAULT_ROLES = [
     permissions: {
       dashboard: [R],
       projects: [R],
+      estimation: [R],
       sites: [C, R, U],
       inventory: [R],
       procurement: [C, R],
@@ -124,6 +129,7 @@ export const DEFAULT_ROLES = [
     permissions: {
       dashboard: [R],
       projects: [R],
+      estimation: [R],
       procurement: [R],
       finance: FULL,
       documents: [C, R],
@@ -152,6 +158,7 @@ export const DEFAULT_ROLES = [
     permissions: {
       dashboard: [R],
       projects: [R],
+      estimation: [R],
       inventory: [R],
       procurement: FULL,
       contractors: [R],
@@ -183,10 +190,12 @@ export const DEFAULT_ROLES = [
     permissions: {
       dashboard: [R],
       projects: [R],
+      estimation: [R],
       contractors: [R, U],
       crm: [R],
       'quality-safety': [R],
       documents: FULL,
+      legal: FULL,
       reports: [R],
     },
   },
@@ -223,6 +232,7 @@ export const DEFAULT_ROLES = [
     permissions: {
       dashboard: [R],
       projects: [R],
+      estimation: [R],
       procurement: [R],
       finance: FULL,
       hr: FULL,

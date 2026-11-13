@@ -1,6 +1,7 @@
 import { MODULES, ROLES } from '../../config/rbac.js';
 import { ChangeOrder } from '../../models/ChangeOrder.js';
 import { DailyProgressReport } from '../../models/DailyProgressReport.js';
+import { ProjectBudget } from '../../models/Finance.js';
 import { MaterialRequest } from '../../models/MaterialRequest.js';
 import { Milestone, MILESTONE_STATUS } from '../../models/Milestone.js';
 import { NOTIFICATION_TYPES } from '../../models/Notification.js';
@@ -8,6 +9,7 @@ import { APPROVAL_STATUS } from '../../models/plugins/approvalWorkflow.js';
 import { PROJECT_STATUS } from '../../models/Project.js';
 import { computeRiskSeverity, ProjectRisk, RISK_STATUS } from '../../models/ProjectRisk.js';
 import { PurchaseOrder } from '../../models/PurchaseOrder.js';
+import { NonConformanceReport } from '../../models/QualitySafety.js';
 import { Task, TASK_STATUS } from '../../models/Task.js';
 import { User, USER_STATUS } from '../../models/User.js';
 import { executeApprovalTransition } from '../../services/approval.service.js';
@@ -289,6 +291,23 @@ export async function transitionChangeOrder(user, projectId, changeId, { status:
     project.updatedBy = user._id;
     await project.save();
     co.appliedAt = new Date();
+
+    if (co.costImpact) {
+      const budget = await ProjectBudget.findOne({ project: project._id });
+      if (budget) {
+        budget.revisedBudget = Math.max(0, (budget.revisedBudget ?? budget.originalBudget) + co.costImpact);
+        budget.revisionHistory.push({
+          version: (budget.revisionHistory?.length ?? 0) + 1,
+          reason: `Approved Change Order ${co.changeNumber}: ${co.title}`,
+          deltaAmount: co.costImpact,
+          revisedTotal: budget.revisedBudget,
+          changeOrderRef: co._id,
+          approvedBy: user._id,
+        });
+        budget.updatedBy = user._id;
+        await budget.save();
+      }
+    }
   }
 
   co.updatedBy = user._id;
@@ -342,6 +361,7 @@ export async function getProjectReadiness(user, projectId) {
     openPos,
     highOpenRisks,
     pendingChangeOrders,
+    openNcrs,
   ] = await Promise.all([
     Task.countDocuments({ project: project._id, status: { $ne: TASK_STATUS.COMPLETED } }),
     Milestone.countDocuments({ project: project._id, status: { $ne: MILESTONE_STATUS.ACHIEVED } }),
@@ -366,6 +386,11 @@ export async function getProjectReadiness(user, projectId) {
       project: project._id,
       status: { $in: [APPROVAL_STATUS.DRAFT, APPROVAL_STATUS.SUBMITTED, APPROVAL_STATUS.UNDER_REVIEW, APPROVAL_STATUS.RETURNED] },
     }),
+    NonConformanceReport.countDocuments({
+      project: project._id,
+      status: { $in: ['open', 'in_progress'] },
+      severity: { $in: ['major', 'critical'] },
+    }),
   ]);
 
   const checklist = {
@@ -387,6 +412,7 @@ export async function getProjectReadiness(user, projectId) {
   if (openPos > 0) blockers.push(`${openPos} draft/unapproved Purchase Order(s)`);
   if (highOpenRisks > 0) blockers.push(`${highOpenRisks} unresolved high/critical risk(s)`);
   if (pendingChangeOrders > 0) blockers.push(`${pendingChangeOrders} pending Change Order(s)`);
+  if (openNcrs > 0) blockers.push(`${openNcrs} unresolved major/critical Quality NCR(s)`);
 
   return {
     projectId: String(project._id),
@@ -401,6 +427,7 @@ export async function getProjectReadiness(user, projectId) {
       openPos,
       highOpenRisks,
       pendingChangeOrders,
+      openNcrs,
     },
     checklist,
   };

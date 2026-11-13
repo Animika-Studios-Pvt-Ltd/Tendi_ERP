@@ -153,6 +153,11 @@ export default function ProjectDetailPage() {
                 Freeze baseline
               </Button>
             )}
+            {project.estimateRef && (
+              <Button variant="secondary" onClick={() => navigate(`/estimation/${project.estimateRef}`)}>
+                View BOQ Estimate
+              </Button>
+            )}
             {canUpdate && (
               <Button variant="secondary" leftIcon={Pencil} onClick={() => navigate(`/projects/${project.id}/edit`)}>
                 Edit project

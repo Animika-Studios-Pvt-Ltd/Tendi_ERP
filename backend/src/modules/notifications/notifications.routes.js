@@ -4,11 +4,16 @@ import { MODULES, ROLES } from '../../config/rbac.js';
 import { authenticate } from '../../middleware/auth.js';
 import { ChangeOrder } from '../../models/ChangeOrder.js';
 import { CompanySettings } from '../../models/CompanySettings.js';
+import { ContractorBill } from '../../models/Contractor.js';
 import { DailyProgressReport } from '../../models/DailyProgressReport.js';
+import { Estimate } from '../../models/Estimate.js';
+import { Expense } from '../../models/Finance.js';
+import { LeaveRequest, PayrollRun } from '../../models/Hr.js';
 import { MaterialRequest } from '../../models/MaterialRequest.js';
 import { Notification } from '../../models/Notification.js';
 import { APPROVAL_STATUS } from '../../models/plugins/approvalWorkflow.js';
 import { PurchaseOrder } from '../../models/PurchaseOrder.js';
+import { StockVerification } from '../../models/Warehouse.js';
 import { ApiError } from '../../utils/ApiError.js';
 import { sendSuccess } from '../../utils/apiResponse.js';
 import { paginate, parsePagination } from '../../utils/pagination.js';
@@ -68,6 +73,33 @@ router.get('/pending-approvals', async (req, res) => {
     !admin && poRule?.requireAdminAboveLimit ? { grandTotal: { $lte: poRule.pmLimit } } : {};
 
   const tasks = [];
+
+  if (canUser(user, MODULES.ESTIMATION, 'approve')) {
+    const estScope = admin ? {} : { $or: [scope, { project: null }] };
+    tasks.push(
+      Estimate.find({ $and: [estScope, makerFilter, { status: { $in: pendingStatuses } }] })
+        .sort({ submittedAt: -1, createdAt: -1 })
+        .limit(10)
+        .populate('project', 'code name')
+        .populate('submittedBy', 'firstName lastName')
+        .lean()
+        .then((rows) =>
+          rows.map((r) => ({
+            id: String(r._id),
+            module: MODULES.ESTIMATION,
+            type: 'Estimate',
+            reference: r.estimateNumber,
+            title: `${r.estimateNumber} · ${r.title}`,
+            project: r.project ? `${r.project.code} · ${r.project.name}` : r.client?.name || 'Pre-project Enquiry',
+            requestedBy: r.submittedBy ? [r.submittedBy.firstName, r.submittedBy.lastName].filter(Boolean).join(' ') : '',
+            amount: r.quotedTotal ?? null,
+            status: r.status,
+            submittedAt: r.submittedAt || r.createdAt,
+            link: `/estimation/${r._id}`,
+          })),
+        ),
+    );
+  }
 
   if (canUser(user, MODULES.PROJECTS, 'approve')) {
     tasks.push(
@@ -168,6 +200,135 @@ router.get('/pending-approvals', async (req, res) => {
             status: r.status,
             submittedAt: r.submittedAt || r.createdAt,
             link: '/procurement/purchase-orders',
+          })),
+        ),
+    );
+  }
+
+  if (canUser(user, MODULES.FINANCE, 'approve')) {
+    const finRule = settings?.approvalLimits?.find((l) => l.module === MODULES.FINANCE);
+    const finFilter = !admin && finRule?.requireAdminAboveLimit ? { totalAmount: { $lte: finRule.pmLimit } } : {};
+    tasks.push(
+      Expense.find({ $and: [scope, makerFilter, finFilter, { status: { $in: pendingStatuses } }] })
+        .sort({ submittedAt: -1, createdAt: -1 })
+        .limit(8)
+        .populate('project', 'code name')
+        .populate('submittedBy', 'firstName lastName')
+        .lean()
+        .then((rows) =>
+          rows.map((r) => ({
+            id: String(r._id),
+            module: MODULES.FINANCE,
+            type: 'Expense',
+            reference: r.expenseNumber,
+            title: `${r.expenseNumber} · ${r.description}`,
+            project: r.project ? `${r.project.code} · ${r.project.name}` : '',
+            requestedBy: r.submittedBy ? [r.submittedBy.firstName, r.submittedBy.lastName].filter(Boolean).join(' ') : '',
+            amount: r.totalAmount ?? null,
+            status: r.status,
+            submittedAt: r.submittedAt || r.createdAt,
+            link: '/finance/expenses',
+          })),
+        ),
+    );
+  }
+
+  if (canUser(user, MODULES.CONTRACTORS, 'approve')) {
+    const conRule = settings?.approvalLimits?.find((l) => l.module === MODULES.CONTRACTORS);
+    const conFilter = !admin && conRule?.requireAdminAboveLimit ? { netPayable: { $lte: conRule.pmLimit } } : {};
+    tasks.push(
+      ContractorBill.find({ $and: [scope, makerFilter, conFilter, { status: { $in: pendingStatuses } }] })
+        .sort({ submittedAt: -1, createdAt: -1 })
+        .limit(8)
+        .populate('project', 'code name')
+        .populate('contractor', 'companyName')
+        .populate('submittedBy', 'firstName lastName')
+        .lean()
+        .then((rows) =>
+          rows.map((r) => ({
+            id: String(r._id),
+            module: MODULES.CONTRACTORS,
+            type: 'Contractor Bill',
+            reference: r.billNumber,
+            title: `${r.billNumber} · ${r.contractor?.companyName || 'Contractor'}`,
+            project: r.project ? `${r.project.code} · ${r.project.name}` : '',
+            requestedBy: r.submittedBy ? [r.submittedBy.firstName, r.submittedBy.lastName].filter(Boolean).join(' ') : '',
+            amount: r.netPayable ?? null,
+            status: r.status,
+            submittedAt: r.submittedAt || r.createdAt,
+            link: '/contractors/bills',
+          })),
+        ),
+    );
+  }
+
+  if (canUser(user, MODULES.INVENTORY, 'approve')) {
+    tasks.push(
+      StockVerification.find({ $and: [scope, makerFilter, { status: { $in: pendingStatuses } }] })
+        .sort({ submittedAt: -1, createdAt: -1 })
+        .limit(5)
+        .populate('project', 'code name')
+        .populate('submittedBy', 'firstName lastName')
+        .lean()
+        .then((rows) =>
+          rows.map((r) => ({
+            id: String(r._id),
+            module: MODULES.INVENTORY,
+            type: 'Stock Verification',
+            reference: r.verificationNumber,
+            title: `${r.verificationNumber}`,
+            project: r.project ? `${r.project.code} · ${r.project.name}` : '',
+            requestedBy: r.submittedBy ? [r.submittedBy.firstName, r.submittedBy.lastName].filter(Boolean).join(' ') : '',
+            amount: null,
+            status: r.status,
+            submittedAt: r.submittedAt || r.createdAt,
+            link: '/inventory',
+          })),
+        ),
+    );
+  }
+
+  if (canUser(user, MODULES.HR, 'approve')) {
+    tasks.push(
+      PayrollRun.find({ $and: [scope, makerFilter, { status: { $in: pendingStatuses } }] })
+        .sort({ submittedAt: -1, createdAt: -1 })
+        .limit(5)
+        .populate('project', 'code name')
+        .populate('submittedBy', 'firstName lastName')
+        .lean()
+        .then((rows) =>
+          rows.map((r) => ({
+            id: String(r._id),
+            module: MODULES.HR,
+            type: 'Payroll Run',
+            reference: r.runNumber,
+            title: `${r.runNumber} · ${r.month}`,
+            project: r.project ? `${r.project.code} · ${r.project.name}` : '',
+            requestedBy: r.submittedBy ? [r.submittedBy.firstName, r.submittedBy.lastName].filter(Boolean).join(' ') : '',
+            amount: r.totalNet ?? null,
+            status: r.status,
+            submittedAt: r.submittedAt || r.createdAt,
+            link: '/hr/payroll',
+          })),
+        ),
+      LeaveRequest.find({ $and: [makerFilter, { status: { $in: pendingStatuses } }] })
+        .sort({ submittedAt: -1, createdAt: -1 })
+        .limit(5)
+        .populate('employee', 'fullName')
+        .lean()
+        .then((rows) =>
+          rows.map((r) => ({
+            id: String(r._id),
+            module: MODULES.HR,
+            type: 'Leave Request',
+            reference: r.leaveType,
+            title: `${r.employee?.fullName || 'Worker'} · ${r.leaveType}`,
+            project: '',
+            requestedBy: r.employee?.fullName || '',
+            amount: null,
+            status: r.status,
+            submittedAt: r.submittedAt || r.createdAt,
+            link: '/hr/leave',
           })),
         ),
     );

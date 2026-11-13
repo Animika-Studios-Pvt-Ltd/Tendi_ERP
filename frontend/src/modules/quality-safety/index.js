@@ -1,5 +1,10 @@
 import { ShieldCheck } from 'lucide-react';
+import { createElement, lazy } from 'react';
 import { MODULES } from '@/constants/permissions';
+
+const QualitySafetyWorkspacePage = lazy(() => import('./pages/QualitySafetyWorkspacePage'));
+const InspectionsTab = () => createElement(QualitySafetyWorkspacePage, { initialTab: 'inspections' });
+const SafetyTab = () => createElement(QualitySafetyWorkspacePage, { initialTab: 'safety' });
 
 export default {
   key: MODULES.QUALITY_SAFETY,
@@ -9,14 +14,15 @@ export default {
   permission: MODULES.QUALITY_SAFETY,
   group: 'assets',
   phase: 6,
-  description: 'Run quality inspections and record, investigate and close safety incidents.',
+  description: 'Run quality checklists, NCR punch lists, safety incidents, and toolbox talks.',
+  element: InspectionsTab,
   sections: [
-    { path: '', title: 'Inspections' },
-    { path: 'incidents', title: 'Safety incidents' },
+    { path: '', title: 'Inspections & NCR', element: InspectionsTab },
+    { path: 'safety', title: 'Safety incidents', element: SafetyTab },
   ],
   capabilities: [
-    'Inspection checklists per activity and stage',
-    'Non-conformance tracking with corrective actions',
-    'Incident reports with severity, root cause and closure',
+    'Site quality inspection checklists with pass/fail scoring',
+    'Non-conformance (NCR) & snag register gating project closure',
+    'Incident, near-miss and toolbox talk safety register',
   ],
 };

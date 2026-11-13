@@ -3,6 +3,7 @@ import { ACTIONS, MODULES } from '../../config/rbac.js';
 import { authenticate, authorize } from '../../middleware/auth.js';
 import { validate } from '../../middleware/validate.js';
 import * as controller from './procurement.controller.js';
+import procurementDepthRoutes from './procurementDepth.routes.js';
 import {
   createGrnSchema,
   createMrSchema,
@@ -24,6 +25,7 @@ const can = (action) => authorize(MODULES.PROCUREMENT, action);
 
 const router = Router();
 router.use(authenticate);
+router.use('/', procurementDepthRoutes);
 
 /* Vendors */
 router.get('/vendors', can(READ), validate({ query: listVendorsQuery }), controller.listVendors);
